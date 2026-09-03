@@ -1,59 +1,55 @@
 # ngx-seo-kit
 
-Angular uygulamaları için build sırasında `sitemap.xml` üreten, bağımlılıksız ve tip güvenli SEO araç seti.
+A dependency-free, type-safe SEO toolkit that generates `sitemap.xml` files for Angular applications at build time.
 
-> Proje geliştirme aşamasındadır. İlk MVP, statik ve önceden bilinen sayfalardan XML sitemap üretimine odaklanır.
+> This project is under active development. The first usable release focuses on generating XML sitemaps for static, predefined pages.
 
-## Neler sunuyor?
+## Features
 
-- Geçerli XML sitemap çıktısı
-- String veya detaylı nesne olarak route tanımlama
-- `lastmod`, `changefreq` ve `priority` desteği
-- Yinelenen URL’leri otomatik temizleme
-- Route ve trailing slash normalizasyonu
-- İstenmeyen route’ları hariç tutma
-- XML karakterlerini güvenli biçimde encode etme
-- CLI ve programatik API
-- Sıfır runtime bağımlılığı
+- Valid XML sitemap output
+- Routes defined as strings or detailed objects
+- Support for `lastmod`, `changefreq`, and `priority`
+- Automatic duplicate URL removal
+- Route and trailing-slash normalization
+- Route exclusion
+- Safe XML character escaping
+- Command-line interface and programmatic API
+- Zero runtime dependencies
 
-## Gereksinimler
+## Requirements
 
-- Node.js 20 veya üzeri
+- Node.js 20 or later
 
-## Kurulum
+## Installation
 
-Paket yayımlandığında:
+After the package is published:
 
 ```bash
 npm install --save-dev ngx-seo-kit
 ```
 
-Bu repository üzerinde geliştirme yapmak için:
+To work on this repository locally:
 
 ```bash
 npm install
 npm test
 ```
 
-## Hızlı başlangıç
+## Quick start
 
-İlk kurulumda etkileşimli menüyü açın:
+Launch the interactive setup menu:
 
 ```bash
 npx ngx-seo-kit init
 ```
 
-Menü; site adresini, sitemap çıktı yolunu, route listesini ve hariç tutulacak
-route’ları sorar. Ardından proje kökünde `seo.config.mjs` dosyasını oluşturur ve
-ilk sitemap’i üretir.
+The menu asks for your site URL, sitemap output path, routes, and excluded routes. It then creates `seo.config.mjs` in the project root and generates the first sitemap.
 
-Config dosyası yoksa `npx ngx-seo-kit` komutu da etkileşimli terminalde kurulum
-menüsünü otomatik açar. CI/build ortamlarında menü açılmaz; config dosyasının
-önceden oluşturulmuş olması gerekir.
+Running `npx ngx-seo-kit` without an existing configuration file also opens the setup menu in an interactive terminal. The menu is disabled in CI and build environments, where the configuration file must already exist.
 
-### Elle yapılandırma
+### Manual configuration
 
-İsterseniz proje kökünde `seo.config.mjs` dosyasını elle oluşturabilirsiniz:
+You can also create `seo.config.mjs` manually in the project root:
 
 ```js
 /** @type {import('ngx-seo-kit').NgxSeoConfig} */
@@ -67,21 +63,21 @@ export default {
 };
 ```
 
-Sitemap’i üretin:
+Generate the sitemap:
 
 ```bash
 npx ngx-seo-kit
 ```
 
-CLI, tamamlandığında dosyanın konumunu ve URL sayısını gösterir:
+When finished, the CLI displays the output path and URL count:
 
 ```text
 ✓ Sitemap generated: /project/dist/my-portfolio/browser/sitemap.xml (4 URLs)
 ```
 
-## Angular build entegrasyonu
+## Angular build integration
 
-Sitemap komutunu Angular build işleminden sonra çalıştırın:
+Run the sitemap command after the Angular build:
 
 ```json
 {
@@ -91,9 +87,9 @@ Sitemap komutunu Angular build işleminden sonra çalıştırın:
 }
 ```
 
-`sitemap.output` değerinin Angular uygulamanızın deploy edilen klasörünü göstermesi gerekir. Yeni Angular SSR yapılarında bu klasör çoğunlukla `dist/<proje-adı>/browser` olur; yalnızca static build kullanan projelerde farklı olabilir.
+The `sitemap.output` value must point to the deployed directory of your Angular application. In modern Angular SSR projects, this is usually `dist/<project-name>/browser`; it may differ for static-only builds.
 
-Deploy sonrasında aşağıdaki adres doğrudan XML döndürmelidir:
+After deployment, the following URL should return the XML file directly:
 
 ```text
 https://example.com/sitemap.xml
@@ -101,7 +97,7 @@ https://example.com/sitemap.xml
 
 ## Route metadata
 
-Route’lara arama motorları için ek bilgiler eklenebilir:
+Routes can include additional metadata for search engines:
 
 ```js
 export default {
@@ -124,43 +120,43 @@ export default {
 };
 ```
 
-Desteklenen `changefreq` değerleri:
+Supported `changefreq` values:
 
 ```text
 always, hourly, daily, weekly, monthly, yearly, never
 ```
 
-`priority`, `0` ile `1` arasında olmalıdır. `lastmod`, `YYYY-MM-DD` veya geçerli W3C datetime biçiminde verilmelidir.
+`priority` must be between `0` and `1`. `lastmod` must use the `YYYY-MM-DD` format or a valid W3C datetime format.
 
-## CLI seçenekleri
+## CLI options
 
 ```text
 ngx-seo-kit [generate] [options]
 ngx-seo-kit init [options]
 
 Commands:
-  generate             Sitemap üretir (varsayılan)
-  init                 Kurulum menüsünü açar ve config oluşturur
+  generate             Generate the sitemap (default)
+  init                 Open the setup menu and create a configuration file
 
 Options:
-  -c, --config <path>  Config dosyası (varsayılan: seo.config.mjs)
-  -o, --output <path>  Config içindeki output değerini geçersiz kılar
-  -h, --help           Yardımı gösterir
+  -c, --config <path>  Configuration file (default: seo.config.mjs)
+  -o, --output <path>  Override the output path from the configuration
+  -h, --help           Show help
 ```
 
-Farklı bir config veya çıktı yolu kullanmak için:
+To use a different configuration file or output path:
 
 ```bash
 npx ngx-seo-kit --config config/seo.production.mjs --output dist/browser/sitemap.xml
 ```
 
-Config belirtilmediğinde CLI sırasıyla `seo.config.mjs`, `seo.config.js` ve `seo.config.cjs` dosyalarını arar.
+When no configuration path is provided, the CLI searches for `seo.config.mjs`, `seo.config.js`, and `seo.config.cjs`, in that order.
 
-Çalışan bir config örneği [seo.config.example.mjs](./seo.config.example.mjs) dosyasında bulunur.
+A working example is available in [seo.config.example.mjs](./seo.config.example.mjs).
 
-## Programatik API
+## Programmatic API
 
-XML’i dosyaya yazmadan üretmek için:
+Generate XML without writing it to a file:
 
 ```ts
 import { generateSitemap } from 'ngx-seo-kit';
@@ -171,7 +167,7 @@ const xml = generateSitemap({
 });
 ```
 
-Dosyaya yazmak için:
+Write the sitemap to a file:
 
 ```ts
 import { writeSitemap } from 'ngx-seo-kit';
@@ -185,7 +181,7 @@ const result = await writeSitemap({
 console.log(result.output, result.urlCount);
 ```
 
-TypeScript config tanımlarken `defineSeoConfig` kullanılabilir:
+Use `defineSeoConfig` when defining a TypeScript configuration:
 
 ```ts
 import { defineSeoConfig } from 'ngx-seo-kit';
@@ -198,9 +194,9 @@ export default defineSeoConfig({
 });
 ```
 
-CLI şu anda config dosyasını doğrudan Node.js ile yüklediği için çalıştırılabilir config’in `.mjs`, `.js` veya `.cjs` olması gerekir.
+The CLI currently loads configuration files directly through Node.js, so executable configurations must use the `.mjs`, `.js`, or `.cjs` extension.
 
-## Üretilen XML
+## Generated XML
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -213,21 +209,21 @@ CLI şu anda config dosyasını doğrudan Node.js ile yüklediği için çalış
 </urlset>
 ```
 
-## Sınırlar
+## Limitations
 
-İlk sürüm route listesini config dosyasından alır. Angular Router dosyasını otomatik analiz etmez ve API’den dinamik blog/proje slug’ları çekmez. Bu özellikler sonraki sürümler için planlanmaktadır.
+The first release reads its route list from the configuration file. It does not automatically analyze Angular Router files or fetch dynamic blog and project slugs from an API. These features are planned for future releases.
 
-## Yol haritası
+## Roadmap
 
-- [x] Config tabanlı XML sitemap üretimi
-- [x] CLI ve programatik API
-- [x] Route normalizasyonu ve doğrulama
-- [ ] Angular route’larını otomatik keşfetme
-- [ ] Dinamik route kaynağı
-- [ ] Sitemap index ve 50.000 URL bölme desteği
-- [ ] `robots.txt` üretimi ve sitemap bağlantısı
+- [x] Configuration-based XML sitemap generation
+- [x] CLI and programmatic API
+- [x] Route normalization and validation
+- [ ] Automatic Angular route discovery
+- [ ] Dynamic route sources
+- [ ] Sitemap indexes and splitting at 50,000 URLs
+- [ ] `robots.txt` generation with a sitemap reference
 
-## Geliştirme
+## Development
 
 ```bash
 npm install
@@ -235,6 +231,6 @@ npm run build
 npm test
 ```
 
-## Lisans
+## License
 
 [MIT](./LICENSE)
