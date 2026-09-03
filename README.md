@@ -37,7 +37,23 @@ npm test
 
 ## Hızlı başlangıç
 
-Proje kökünde bir `seo.config.mjs` dosyası oluşturun:
+İlk kurulumda etkileşimli menüyü açın:
+
+```bash
+npx ngx-seo-kit init
+```
+
+Menü; site adresini, sitemap çıktı yolunu, route listesini ve hariç tutulacak
+route’ları sorar. Ardından proje kökünde `seo.config.mjs` dosyasını oluşturur ve
+ilk sitemap’i üretir.
+
+Config dosyası yoksa `npx ngx-seo-kit` komutu da etkileşimli terminalde kurulum
+menüsünü otomatik açar. CI/build ortamlarında menü açılmaz; config dosyasının
+önceden oluşturulmuş olması gerekir.
+
+### Elle yapılandırma
+
+İsterseniz proje kökünde `seo.config.mjs` dosyasını elle oluşturabilirsiniz:
 
 ```js
 /** @type {import('ngx-seo-kit').NgxSeoConfig} */
@@ -119,7 +135,12 @@ always, hourly, daily, weekly, monthly, yearly, never
 ## CLI seçenekleri
 
 ```text
-ngx-seo-kit [options]
+ngx-seo-kit [generate] [options]
+ngx-seo-kit init [options]
+
+Commands:
+  generate             Sitemap üretir (varsayılan)
+  init                 Kurulum menüsünü açar ve config oluşturur
 
 Options:
   -c, --config <path>  Config dosyası (varsayılan: seo.config.mjs)

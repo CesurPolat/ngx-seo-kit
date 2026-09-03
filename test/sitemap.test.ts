@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { generateSitemap, writeSitemap } from '../src/index.js';
 
@@ -85,4 +86,26 @@ test('writes sitemap and creates missing output directories', async () => {
   assert.equal(result.output, output);
   assert.equal(result.urlCount, 2);
   assert.match(await readFile(output, 'utf8'), /<urlset/);
+});
+
+test('CLI exposes init and generate commands in help', () => {
+  const cli = resolve('dist/src/cli.js');
+  const result = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8' });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /ngx-seo-kit init/);
+  assert.match(result.stdout, /generate\s+Generate sitemap/);
+});
+
+test('CLI does not open setup prompts in non-interactive environments', async () => {
+  const cli = resolve('dist/src/cli.js');
+  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-cli-'));
+  const result = spawnSync(process.execPath, [cli, 'generate'], {
+    cwd: directory,
+    encoding: 'utf8',
+    env: { ...process.env, CI: '1' },
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /ngx-seo-kit init/);
 });
