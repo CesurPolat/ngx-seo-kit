@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
-import { access, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { createInterface } from 'node:readline/promises';
+import confirm from '@inquirer/confirm';
+import input from '@inquirer/input';
+import select from '@inquirer/select';
+import { access, mkdir, writeFile } from 'node:fs/promises';
+import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { generateSitemap, writeSitemap } from './sitemap.js';
 import type { NgxSeoConfig } from './types.js';
@@ -14,11 +16,13 @@ const DEFAULT_CONFIG_FILES = [
 ] as const;
 
 interface CliOptions {
-  command: 'generate' | 'init';
+  command?: 'generate' | 'init';
   config?: string;
   output?: string;
   help: boolean;
 }
+
+type MenuAction = 'generate' | 'init' | 'exit';
 
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
@@ -29,10 +33,30 @@ async function main(): Promise<void> {
   }
 
   const requestedConfigPath = options.config ? resolve(options.config) : undefined;
+  let command = options.command;
+
+  if (!command) {
+    if (isInteractiveTerminal()) {
+      const existingConfigPath = requestedConfigPath
+        ? await optionalConfig(requestedConfigPath)
+        : await findConfig(process.cwd());
+      const action = await runMainMenu(Boolean(existingConfigPath));
+
+      if (action === 'exit') {
+        console.log('Goodbye!');
+        return;
+      }
+
+      command = action;
+    } else {
+      command = 'generate';
+    }
+  }
+
   let configPath: string;
   let config: unknown;
 
-  if (options.command === 'init') {
+  if (command === 'init') {
     configPath = requestedConfigPath ?? resolve(DEFAULT_CONFIG_FILES[0]);
 
     if (await fileExists(configPath)) {
@@ -73,7 +97,7 @@ async function main(): Promise<void> {
 }
 
 function parseArguments(args: string[]): CliOptions {
-  const options: CliOptions = { command: 'generate', help: false };
+  const options: CliOptions = { help: false };
   let commandSeen = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -149,70 +173,143 @@ async function requireConfig(path: string): Promise<string> {
   return path;
 }
 
+async function optionalConfig(path: string): Promise<string | undefined> {
+  return (await fileExists(path)) ? path : undefined;
+}
+
+function isInteractiveTerminal(): boolean {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY && !process.env.CI);
+}
+
 function assertInteractiveTerminal(): void {
-  if (!process.stdin.isTTY || !process.stdout.isTTY || process.env.CI) {
+  if (!isInteractiveTerminal()) {
     throw new Error(
       'Config file not found. Run "ngx-seo-kit init" in an interactive terminal first.',
     );
   }
 }
 
+async function runMainMenu(hasConfig: boolean): Promise<MenuAction> {
+  console.log('\nngx-seo-kit\n');
+
+  return select<MenuAction>({
+    message: 'What would you like to do?',
+    choices: [
+      {
+        name: 'Generate sitemap',
+        value: 'generate',
+        description: 'Generate sitemap.xml from the current configuration.',
+      },
+      {
+        name: 'Create configuration',
+        value: 'init',
+        description: 'Start the guided configuration setup.',
+        ...(hasConfig ? { disabled: 'A configuration file already exists' } : {}),
+      },
+      {
+        name: 'Exit',
+        value: 'exit',
+      },
+    ],
+  });
+}
+
 async function runSetupMenu(
   configPath: string,
   requestedOutput?: string,
 ): Promise<NgxSeoConfig> {
-  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  console.log('\nCreate SEO configuration\n');
 
-  console.log('🚀 ngx-seo-kit setup\n');
+  const siteUrl = await input({
+    message: 'Site URL',
+    default: 'https://example.com',
+    validate: validateSiteUrl,
+  });
+  const output = await input({
+    message: 'Sitemap output path',
+    default: requestedOutput ?? 'dist/browser/sitemap.xml',
+    validate: (value) => value.trim().length > 0 || 'Output path cannot be empty.',
+  });
+  const routesInput = await input({
+    message: 'Routes (comma separated)',
+    default: '/',
+    validate: (value) => parseList(value).length > 0 || 'Enter at least one route.',
+  });
+  const excludeInput = await input({
+    message: 'Excluded routes (comma separated)',
+  });
 
-  try {
-    const siteUrl = await askRequired(prompt, 'Site URL', 'https://example.com');
-    const output = await askRequired(
-      prompt,
-      'Sitemap output path',
-      requestedOutput ?? 'dist/browser/sitemap.xml',
-    );
-    const routesInput = await askRequired(prompt, 'Routes (comma separated)', '/');
-    const excludeInput = await prompt.question(
-      'Excluded routes (comma separated, optional): ',
-    );
+  const routes = parseList(routesInput);
+  const exclude = parseList(excludeInput);
+  const config: NgxSeoConfig = {
+    siteUrl: siteUrl.trim(),
+    sitemap: {
+      output: output.trim(),
+      routes,
+      ...(exclude.length > 0 ? { exclude } : {}),
+    },
+  };
 
-    const routes = parseList(routesInput);
-    const exclude = parseList(excludeInput);
-    const config: NgxSeoConfig = {
-      siteUrl,
-      sitemap: {
-        output,
-        routes,
-        ...(exclude.length > 0 ? { exclude } : {}),
-      },
-    };
+  validateConfig(config, configPath);
+  generateSitemap({
+    siteUrl: config.siteUrl,
+    routes,
+    ...(exclude.length > 0 ? { exclude } : {}),
+  });
 
-    validateConfig(config, configPath);
-    generateSitemap({ siteUrl, routes, ...(exclude.length > 0 ? { exclude } : {}) });
-    await writeFile(configPath, serializeConfig(config), { encoding: 'utf8', flag: 'wx' });
-    console.log(`\n✓ Config created: ${configPath}`);
-    return config;
-  } finally {
-    prompt.close();
+  console.log('\nConfiguration summary');
+  console.log(`  Site URL: ${config.siteUrl}`);
+  console.log(`  Output:   ${config.sitemap.output}`);
+  console.log(`  Routes:   ${routes.length}`);
+  console.log(`  Excluded: ${exclude.length}`);
+
+  const shouldCreate = await confirm({
+    message: 'Create configuration and generate the sitemap?',
+    default: true,
+  });
+
+  if (!shouldCreate) {
+    throw new SetupCancelledError();
   }
-}
 
-async function askRequired(
-  prompt: ReturnType<typeof createInterface>,
-  label: string,
-  defaultValue: string,
-): Promise<string> {
-  const answer = (await prompt.question(`${label} (${defaultValue}): `)).trim();
-  return answer || defaultValue;
+  await mkdir(dirname(configPath), { recursive: true });
+  await writeFile(configPath, serializeConfig(config, configPath), {
+    encoding: 'utf8',
+    flag: 'wx',
+  });
+  console.log(`\n✓ Config created: ${configPath}`);
+  return config;
 }
 
 function parseList(value: string): string[] {
   return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
 }
 
-function serializeConfig(config: NgxSeoConfig): string {
-  return `/** @type {import('ngx-seo-kit').NgxSeoConfig} */\nexport default ${JSON.stringify(config, null, 2)};\n`;
+function validateSiteUrl(value: string): true | string {
+  try {
+    const url = new URL(value.trim());
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return 'Site URL must use http or https.';
+    }
+
+    if (url.search || url.hash) {
+      return 'Site URL cannot contain a query string or hash.';
+    }
+
+    return true;
+  } catch {
+    return 'Enter a valid absolute URL, for example https://example.com.';
+  }
+}
+
+function serializeConfig(config: NgxSeoConfig, path: string): string {
+  const value = JSON.stringify(config, null, 2);
+  const annotation = `/** @type {import('ngx-seo-kit').NgxSeoConfig} */`;
+
+  return extname(path) === '.cjs'
+    ? `${annotation}\nmodule.exports = ${value};\n`
+    : `${annotation}\nexport default ${value};\n`;
 }
 
 async function loadConfig(path: string): Promise<unknown> {
@@ -245,11 +342,13 @@ function printHelp(): void {
   console.log(`ngx-seo-kit sitemap generator
 
 Usage:
-  ngx-seo-kit [generate] [options]
+  ngx-seo-kit [options]
+  ngx-seo-kit generate [options]
   ngx-seo-kit init [options]
 
 Commands:
-  generate             Generate sitemap (default)
+  (none)               Open the interactive main menu
+  generate             Generate sitemap
   init                 Open setup menu and create a config
 
 Options:
@@ -259,7 +358,17 @@ Options:
 `);
 }
 
+class SetupCancelledError extends Error {}
+
 main().catch((error: unknown) => {
+  if (
+    error instanceof SetupCancelledError ||
+    (error instanceof Error && error.name === 'ExitPromptError')
+  ) {
+    console.log('\nSetup cancelled.');
+    return;
+  }
+
   const message = error instanceof Error ? error.message : String(error);
   console.error(`✗ ${message}`);
   process.exitCode = 1;

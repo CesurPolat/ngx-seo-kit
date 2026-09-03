@@ -1,6 +1,6 @@
 # ngx-seo-kit
 
-A dependency-free, type-safe SEO toolkit that generates `sitemap.xml` files for Angular applications at build time.
+A type-safe SEO toolkit that generates `sitemap.xml` files for Angular applications at build time.
 
 > This project is under active development. The first usable release focuses on generating XML sitemaps for static, predefined pages.
 
@@ -14,7 +14,7 @@ A dependency-free, type-safe SEO toolkit that generates `sitemap.xml` files for 
 - Route exclusion
 - Safe XML character escaping
 - Command-line interface and programmatic API
-- Zero runtime dependencies
+- Guided interactive CLI setup
 
 ## Requirements
 
@@ -37,15 +37,19 @@ npm test
 
 ## Quick start
 
-Launch the interactive setup menu:
+Launch the interactive main menu:
 
 ```bash
-npx ngx-seo-kit init
+npx ngx-seo-kit
 ```
 
-The menu asks for your site URL, sitemap output path, routes, and excluded routes. It then creates `seo.config.mjs` in the project root and generates the first sitemap.
+Choose **Create configuration** to start the guided setup. The setup asks for
+your site URL, sitemap output path, routes, and excluded routes. It previews the
+configuration before creating `seo.config.mjs` and generating the first sitemap.
 
-Running `npx ngx-seo-kit` without an existing configuration file also opens the setup menu in an interactive terminal. The menu is disabled in CI and build environments, where the configuration file must already exist.
+You can skip the main menu and open the setup directly with
+`npx ngx-seo-kit init`. Interactive menus are disabled in CI and build
+environments, where the configuration file must already exist.
 
 ### Manual configuration
 
@@ -82,7 +86,7 @@ Run the sitemap command after the Angular build:
 ```json
 {
   "scripts": {
-    "build": "ng build && ngx-seo-kit"
+    "build": "ng build && ngx-seo-kit generate"
   }
 }
 ```
@@ -130,12 +134,17 @@ always, hourly, daily, weekly, monthly, yearly, never
 
 ## CLI options
 
+See the [CLI guide](./docs/cli.md) for setup, configuration precedence, CI usage,
+and troubleshooting details.
+
 ```text
-ngx-seo-kit [generate] [options]
+ngx-seo-kit [options]
+ngx-seo-kit generate [options]
 ngx-seo-kit init [options]
 
 Commands:
-  generate             Generate the sitemap (default)
+  (none)               Open the interactive main menu
+  generate             Generate the sitemap
   init                 Open the setup menu and create a configuration file
 
 Options:
@@ -147,7 +156,7 @@ Options:
 To use a different configuration file or output path:
 
 ```bash
-npx ngx-seo-kit --config config/seo.production.mjs --output dist/browser/sitemap.xml
+npx ngx-seo-kit generate --config config/seo.production.mjs --output dist/browser/sitemap.xml
 ```
 
 When no configuration path is provided, the CLI searches for `seo.config.mjs`, `seo.config.js`, and `seo.config.cjs`, in that order.

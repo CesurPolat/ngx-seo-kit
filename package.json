@@ -19,6 +19,7 @@
   },
   "files": [
     "dist/src",
+    "docs",
     "README.md",
     "LICENSE"
   ],
@@ -37,5 +38,10 @@
     "sitemap",
     "sitemap.xml",
     "ngx"
-  ]
+  ],
+  "dependencies": {
+    "@inquirer/confirm": "^5.1.21",
+    "@inquirer/input": "^4.3.1",
+    "@inquirer/select": "^4.4.2"
+  }
 }

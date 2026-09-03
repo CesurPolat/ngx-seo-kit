@@ -93,6 +93,7 @@ test('CLI exposes init and generate commands in help', () => {
   const result = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8' });
 
   assert.equal(result.status, 0);
+  assert.match(result.stdout, /\(none\)\s+Open the interactive main menu/);
   assert.match(result.stdout, /ngx-seo-kit init/);
   assert.match(result.stdout, /generate\s+Generate sitemap/);
 });
