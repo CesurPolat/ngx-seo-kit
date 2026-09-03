@@ -1,0 +1,41 @@
+{
+  "name": "ngx-seo-kit",
+  "version": "0.1.0",
+  "description": "Build-time SEO tools for Angular applications.",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "ngx-seo-kit": "./dist/src/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist/src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/test/sitemap.test.js",
+    "prepack": "npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "keywords": [
+    "angular",
+    "seo",
+    "sitemap",
+    "sitemap.xml",
+    "ngx"
+  ]
+}
