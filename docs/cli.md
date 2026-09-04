@@ -22,6 +22,13 @@ from an npm script:
 npx ngx-seo-kit --help
 ```
 
+When run interactively through `npx`, the CLI checks whether `ngx-seo-kit` is
+available from the current project. If it is not, and the directory contains a
+`package.json`, the CLI asks before running
+`npm install --save-dev ngx-seo-kit@<current-version>`. Declining skips the
+installation and continues without modifying the project. This prompt is never
+shown in CI or other non-interactive environments.
+
 ```json
 {
   "scripts": {

@@ -44,6 +44,11 @@ Launch the interactive main menu:
 npx ngx-seo-kit
 ```
 
+If the package is not installed in the current project, the interactive CLI
+asks for confirmation before adding its current version to `devDependencies`.
+Declining leaves the project unchanged and continues with the temporary `npx`
+copy.
+
 Choose **Create configuration** to start the guided setup. The setup asks for
 your site URL, sitemap output path, and excluded routes. It discovers Angular
 routes from `src/app/app.routes.ts`, previews the configuration, creates `seo.config.ts`, and

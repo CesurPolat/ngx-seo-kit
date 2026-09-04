@@ -3,7 +3,9 @@
 import confirm from '@inquirer/confirm';
 import input from '@inquirer/input';
 import select from '@inquirer/select';
-import { access, mkdir, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { tsImport } from 'tsx/esm/api';
@@ -37,6 +39,8 @@ async function main(): Promise<void> {
     printHelp();
     return;
   }
+
+  await offerLocalInstallation();
 
   const requestedConfigPath = options.config ? resolve(options.config) : undefined;
   let command = options.command;
@@ -219,6 +223,93 @@ function assertInteractiveTerminal(): void {
       'Config file not found. Run "ngx-seo-kit init" in an interactive terminal first.',
     );
   }
+}
+
+async function offerLocalInstallation(): Promise<void> {
+  if (
+    !isInteractiveTerminal() ||
+    !(await fileExists(resolve('package.json'))) ||
+    isPackageAvailableFromProject()
+  ) {
+    return;
+  }
+
+  const shouldInstall = await confirm({
+    message: 'ngx-seo-kit is not installed in this project. Install it as a dev dependency?',
+    default: true,
+  });
+
+  if (!shouldInstall) {
+    return;
+  }
+
+  const version = await readPackageVersion();
+  console.log(`\nInstalling ngx-seo-kit@${version} as a dev dependency...\n`);
+  await installDevDependency(`ngx-seo-kit@${version}`);
+  console.log('\n✓ ngx-seo-kit was added to devDependencies.');
+}
+
+function isPackageAvailableFromProject(): boolean {
+  try {
+    const projectRequire = createRequire(resolve('package.json'));
+    projectRequire.resolve('ngx-seo-kit');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readPackageVersion(): Promise<string> {
+  const packageJsonPath = new URL('../../package.json', import.meta.url);
+  const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as {
+    version?: unknown;
+  };
+
+  if (
+    typeof packageJson.version !== 'string' ||
+    !/^[0-9A-Za-z.+-]+$/.test(packageJson.version)
+  ) {
+    throw new Error('Could not determine the current ngx-seo-kit version.');
+  }
+
+  return packageJson.version;
+}
+
+async function installDevDependency(specifier: string): Promise<void> {
+  const npmCliPath = process.env.npm_execpath;
+  const executable = npmCliPath
+    ? process.execPath
+    : process.platform === 'win32'
+      ? process.env.ComSpec ?? 'cmd.exe'
+      : 'npm';
+  const args = npmCliPath
+    ? [npmCliPath, 'install', '--save-dev', specifier]
+    : process.platform === 'win32'
+      ? ['/d', '/s', '/c', `npm install --save-dev ${specifier}`]
+      : ['install', '--save-dev', specifier];
+
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn(executable, args, {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+    });
+
+    child.once('error', reject);
+    child.once('exit', (code, signal) => {
+      if (code === 0) {
+        resolvePromise();
+        return;
+      }
+
+      reject(
+        new Error(
+          signal
+            ? `npm install was terminated by signal ${signal}.`
+            : `npm install failed with exit code ${code ?? 'unknown'}.`,
+        ),
+      );
+    });
+  });
 }
 
 async function runMainMenu(

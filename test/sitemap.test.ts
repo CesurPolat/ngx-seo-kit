@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import {
@@ -14,6 +15,16 @@ import {
   writeSitemap,
 } from '../src/index.js';
 import { normalizeSiteUrl, withDefaultProtocol } from '../src/site-url.js';
+
+test('package can be loaded from CommonJS configs', () => {
+  const packageExports = createRequire(import.meta.url)('ngx-seo-kit') as {
+    defineSeoConfig?: unknown;
+    routesToPaths?: unknown;
+  };
+
+  assert.equal(typeof packageExports.defineSeoConfig, 'function');
+  assert.equal(typeof packageExports.routesToPaths, 'function');
+});
 
 test('normalizes site URLs through shared URL helpers', () => {
   assert.equal(withDefaultProtocol(' example.com '), 'https://example.com');

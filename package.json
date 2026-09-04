@@ -1,8 +1,19 @@
 {
   "name": "ngx-seo-kit",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Build-time SEO tools for Angular applications.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CesurPolat/ngx-seo-kit.git"
+  },
+  "homepage": "https://github.com/CesurPolat/ngx-seo-kit#readme",
+  "bugs": {
+    "url": "https://github.com/CesurPolat/ngx-seo-kit/issues"
+  },
   "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "license": "MIT",
   "sideEffects": false,
   "engines": {
@@ -14,18 +25,20 @@
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
-      "import": "./dist/src/index.js"
+      "import": "./dist/src/index.js",
+      "require": "./dist/cjs/index.js"
     }
   },
   "files": [
     "dist/src",
+    "dist/cjs",
     "docs",
     "seo.config.example.ts",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/write-cjs-package.mjs",
     "test": "npm run build && node --test dist/test/sitemap.test.js",
     "prepack": "npm test"
   },
