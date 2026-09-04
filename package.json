@@ -1,6 +1,6 @@
 {
   "name": "ngx-seo-kit",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Build-time SEO tools for Angular applications.",
   "type": "module",
   "license": "MIT",
