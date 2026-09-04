@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
+import { normalizeSiteUrl } from './site-url.js';
 import {
   CHANGE_FREQUENCIES,
   type GenerateSitemapOptions,
@@ -145,26 +146,6 @@ function defaultStylesheetOutput(sitemapOutput: string): string {
   return sitemapOutput.toLowerCase().endsWith('.xml')
     ? `${sitemapOutput.slice(0, -4)}.xsl`
     : `${sitemapOutput}.xsl`;
-}
-
-function normalizeSiteUrl(value: string): string {
-  let url: URL;
-
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error(`Invalid siteUrl: "${value}".`);
-  }
-
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('siteUrl must use http or https.');
-  }
-
-  if (url.search || url.hash) {
-    throw new Error('siteUrl cannot contain a query string or hash.');
-  }
-
-  return url.toString().replace(/\/$/, '');
 }
 
 function normalizeRoute(input: SitemapRouteInput): SitemapRoute {

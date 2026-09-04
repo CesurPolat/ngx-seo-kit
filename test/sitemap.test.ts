@@ -10,6 +10,14 @@ import {
   generateSitemapStylesheet,
   writeSitemap,
 } from '../src/index.js';
+import { normalizeSiteUrl, withDefaultProtocol } from '../src/site-url.js';
+
+test('normalizes site URLs through shared URL helpers', () => {
+  assert.equal(withDefaultProtocol(' example.com '), 'https://example.com');
+  assert.equal(normalizeSiteUrl('https://example.com/'), 'https://example.com');
+  assert.throws(() => normalizeSiteUrl('ftp://example.com'), /http or https/);
+  assert.throws(() => normalizeSiteUrl('https://example.com?draft=1'), /query string or hash/);
+});
 
 test('generates a valid sitemap with optional metadata', () => {
   const xml = generateSitemap({

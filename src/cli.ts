@@ -8,6 +8,7 @@ import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { generateSitemap, writeSitemap } from './sitemap.js';
 import { discoverAngularRoutes } from './route-discovery.js';
+import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from './site-url.js';
 import type { NgxSeoConfig } from './types.js';
 import process from 'node:process';
 
@@ -324,7 +325,7 @@ async function runSetupMenu(
   const exclude = parseList(excludeInput);
   const discoveredRoutes = await discoverAngularRoutes(process.cwd());
   const config: NgxSeoConfig = {
-    siteUrl: normalizeSiteUrl(siteUrl),
+    siteUrl: normalizeSiteUrl(withDefaultProtocol(siteUrl)),
     sitemap: {
       output: output.trim(),
       discoverRoutes: true,
@@ -376,25 +377,18 @@ function parseList(value: string): string[] {
 
 function validateSiteUrl(value: string): true | string {
   try {
-    const url = new URL(normalizeSiteUrl(value));
-
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return 'Site URL must use http or https.';
-    }
-
-    if (url.search || url.hash) {
-      return 'Site URL cannot contain a query string or hash.';
-    }
-
+    normalizeSiteUrl(withDefaultProtocol(value));
     return true;
-  } catch {
+  } catch (error) {
+    if (error instanceof SiteUrlError) {
+      if (error.code === 'unsupported-protocol') return 'Site URL must use http or https.';
+      if (error.code === 'query-or-hash') {
+        return 'Site URL cannot contain a query string or hash.';
+      }
+    }
+
     return 'Enter a valid absolute URL, for example https://example.com.';
   }
-}
-
-function normalizeSiteUrl(value: string): string {
-  const url = value.trim();
-  return /^[a-z][a-z\d+.-]*:\/\//i.test(url) ? url : `https://${url}`;
 }
 
 function serializeConfig(config: NgxSeoConfig, path: string): string {
