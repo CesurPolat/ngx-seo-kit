@@ -8,6 +8,7 @@ import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { generateSitemap, writeSitemap } from './sitemap.js';
 import type { NgxSeoConfig } from './types.js';
+import process from 'node:process';
 
 const DEFAULT_CONFIG_FILES = [
   'seo.config.mjs',
@@ -22,7 +23,7 @@ interface CliOptions {
   help: boolean;
 }
 
-type MenuAction = 'generate' | 'init' | 'exit';
+type MenuAction = 'generate' | 'init' | 'help' | 'exit';
 
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
@@ -189,29 +190,79 @@ function assertInteractiveTerminal(): void {
   }
 }
 
-async function runMainMenu(hasConfig: boolean): Promise<MenuAction> {
-  console.log('\nngx-seo-kit\n');
+async function runMainMenu(
+  hasConfig: boolean,
+): Promise<Exclude<MenuAction, 'help'>> {
+  printBrand();
 
-  return select<MenuAction>({
-    message: 'What would you like to do?',
-    choices: [
-      {
-        name: 'Generate sitemap',
-        value: 'generate',
-        description: 'Generate sitemap.xml from the current configuration.',
-      },
-      {
-        name: 'Create configuration',
-        value: 'init',
-        description: 'Start the guided configuration setup.',
-        ...(hasConfig ? { disabled: 'A configuration file already exists' } : {}),
-      },
-      {
-        name: 'Exit',
-        value: 'exit',
-      },
-    ],
-  });
+  while (true) {
+    const action = await select<MenuAction>({
+      message: 'What would you like to do?',
+      choices: [
+        {
+          name: 'Generate sitemap',
+          value: 'generate',
+          description:
+            'Create sitemap.xml from your config. Direct command: npx ngx-seo-kit generate',
+        },
+        {
+          name: 'Create configuration',
+          value: 'init',
+          description:
+            'Start the guided setup. Direct command: npx ngx-seo-kit init',
+          ...(hasConfig ? { disabled: 'A configuration file already exists' } : {}),
+        },
+        {
+          name: 'Help & command examples',
+          value: 'help',
+          description:
+            'Show every command, option and example. Direct command: npx ngx-seo-kit --help',
+        },
+        {
+          name: 'Exit',
+          value: 'exit',
+          description: 'Close ngx-seo-kit without making any changes.',
+        },
+      ],
+    });
+
+    if (action !== 'help') {
+      return action;
+    }
+
+    printHelp();
+  }
+}
+
+function printBrand(): void {
+  const useColor = process.stdout.isTTY && !('NO_COLOR' in process.env);
+  const colors = useColor
+    ? [
+        '\u001b[38;2;168;85;247m',
+        '\u001b[38;2;217;70;239m',
+        '\u001b[38;2;236;72;153m',
+        '\u001b[38;2;34;211;238m',
+        '\u001b[38;2;6;182;212m',
+      ]
+    : ['', '', '', '', ''];
+  const accent = useColor ? '\u001b[38;2;250;204;21m' : '';
+  const bold = useColor ? '\u001b[1m' : '';
+  const reset = useColor ? '\u001b[0m' : '';
+  const bannerLines = [
+    ' _ __   __ _ __  __       ___  ___  ___       _  ___ _',
+    "| '_ \\ / _` |\\ \\/ /_____ / __|/ _ \\/ _ \\_____| |/ (_) |_",
+    '| | | | (_| | >  <_____\\__ \\  __/ (_) |_____|   <| |  _|',
+    '|_| |_|\\__, |/_/\\_\\     |___/\\___|\\___/      |_|\\_\\_|\\__|',
+    '       |___/',
+  ];
+  const banner = bannerLines
+    .map((line, index) => `${colors[index]}${line}`)
+    .join('\n');
+
+  console.log(
+    `\n${bold}${banner}${reset}\n` +
+      `${accent}${bold}             Angular SEO tooling${reset}\n`,
+  );
 }
 
 async function runSetupMenu(
@@ -342,19 +393,26 @@ function printHelp(): void {
   console.log(`ngx-seo-kit sitemap generator
 
 Usage:
-  ngx-seo-kit [options]
-  ngx-seo-kit generate [options]
-  ngx-seo-kit init [options]
+  npx ngx-seo-kit [options]
+  npx ngx-seo-kit generate [options]
+  npx ngx-seo-kit init [options]
 
 Commands:
-  (none)               Open the interactive main menu
-  generate             Generate sitemap
-  init                 Open setup menu and create a config
+  (none)               Open the interactive main menu.
+  generate             Generate sitemap.xml using the current config.
+  init                 Create a config through the guided setup.
 
 Options:
   -c, --config <path>  Config file (default: seo.config.mjs)
   -o, --output <path>  Override the sitemap output path
   -h, --help           Show this help
+
+Examples:
+  npx ngx-seo-kit
+  npx ngx-seo-kit init
+  npx ngx-seo-kit generate
+  npx ngx-seo-kit generate --config config/seo.production.mjs
+  npx ngx-seo-kit generate --output dist/browser/sitemap.xml
 `);
 }
 
