@@ -91,7 +91,7 @@ async function main(): Promise<void> {
   validateConfig(config, configPath);
 
   const configuredRoutes = config.sitemap.routes ?? [];
-  const discovery = config.sitemap.discoverRoutes;
+  const discovery = config.sitemap.discoverRoutes ?? true;
   const discoveredRoutes =
     discovery === false
       ? []
@@ -285,10 +285,10 @@ function printBrand(): void {
   const bold = useColor ? '\u001b[1m' : '';
   const reset = useColor ? '\u001b[0m' : '';
   const bannerLines = [
-    ' _ __   __ _ __  __       ___  ___  ___       _  ___ _',
-    "| '_ \\ / _` |\\ \\/ /_____ / __|/ _ \\/ _ \\_____| |/ (_) |_",
-    '| | | | (_| | >  <_____\\__ \\  __/ (_) |_____|   <| |  _|',
-    '|_| |_|\\__, |/_/\\_\\     |___/\\___|\\___/      |_|\\_\\_|\\__|',
+    ' _ __   __ _ __  __     ___  ___  ___        _  ___ _',
+    "| '_ \\ / _` |\\ \\/ /    / __|/ _ \\/ _ \\      | |/ (_) |_",
+    '| | | | (_| | >  <     \\__ \\  __/ (_) |     |   <| |  _|',
+    '|_| |_|\\__, |/_/\\_\\    |___/\\___|\\___/      |_|\\_\\_|\\__|',
     '       |___/',
   ];
   const banner = bannerLines
@@ -324,9 +324,10 @@ async function runSetupMenu(
   const exclude = parseList(excludeInput);
   const discoveredRoutes = await discoverAngularRoutes(process.cwd());
   const config: NgxSeoConfig = {
-    siteUrl: siteUrl.trim(),
+    siteUrl: normalizeSiteUrl(siteUrl),
     sitemap: {
       output: output.trim(),
+      discoverRoutes: true,
       stylesheet: true,
       ...(discoveredRoutes.length === 0 ? { routes: [] } : {}),
       ...(exclude.length > 0 ? { exclude } : {}),
@@ -375,7 +376,7 @@ function parseList(value: string): string[] {
 
 function validateSiteUrl(value: string): true | string {
   try {
-    const url = new URL(value.trim());
+    const url = new URL(normalizeSiteUrl(value));
 
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
       return 'Site URL must use http or https.';
@@ -389,6 +390,11 @@ function validateSiteUrl(value: string): true | string {
   } catch {
     return 'Enter a valid absolute URL, for example https://example.com.';
   }
+}
+
+function normalizeSiteUrl(value: string): string {
+  const url = value.trim();
+  return /^[a-z][a-z\d+.-]*:\/\//i.test(url) ? url : `https://${url}`;
 }
 
 function serializeConfig(config: NgxSeoConfig, path: string): string {
