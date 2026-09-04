@@ -3,11 +3,9 @@ export default {
   siteUrl: 'https://example.com',
   sitemap: {
     output: 'dist/browser/sitemap.xml',
+    discoverRoutes: true,
     routes: [
-      { path: '/', changefreq: 'weekly', priority: 1 },
-      { path: '/about', changefreq: 'monthly', priority: 0.8 },
-      { path: '/projects', changefreq: 'weekly', priority: 0.9 },
-      '/contact',
+      { path: '/projects/featured', changefreq: 'weekly', priority: 0.9 },
     ],
     exclude: ['/404', '/admin'],
   },

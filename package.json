@@ -29,8 +29,7 @@
     "prepack": "npm test"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
-    "typescript": "^5.9.0"
+    "@types/node": "^24.13.3"
   },
   "keywords": [
     "angular",
@@ -42,6 +41,7 @@
   "dependencies": {
     "@inquirer/confirm": "^5.1.21",
     "@inquirer/input": "^4.3.1",
-    "@inquirer/select": "^4.4.2"
+    "@inquirer/select": "^4.4.2",
+    "typescript": "^5.9.0"
   }
 }

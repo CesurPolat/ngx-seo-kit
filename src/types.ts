@@ -20,9 +20,15 @@ export interface SitemapRoute {
 export type SitemapRouteInput = string | SitemapRoute;
 
 export interface SitemapOptions {
-  routes: SitemapRouteInput[];
+  routes?: SitemapRouteInput[];
+  discoverRoutes?: boolean | AngularRouteDiscoveryOptions;
   exclude?: string[];
   output?: string;
+}
+
+export interface AngularRouteDiscoveryOptions {
+  /** Angular source directory. Defaults to `<project>/src`. */
+  root?: string;
 }
 
 export interface NgxSeoConfig {

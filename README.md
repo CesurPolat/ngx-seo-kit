@@ -44,8 +44,9 @@ npx ngx-seo-kit
 ```
 
 Choose **Create configuration** to start the guided setup. The setup asks for
-your site URL, sitemap output path, routes, and excluded routes. It previews the
-configuration before creating `seo.config.mjs` and generating the first sitemap.
+your site URL, sitemap output path, and excluded routes. It discovers Angular
+routes under `src`, previews the configuration, creates `seo.config.mjs`, and
+generates the first sitemap.
 
 You can skip the main menu and open the setup directly with
 `npx ngx-seo-kit init`. Interactive menus are disabled in CI and build
@@ -61,7 +62,6 @@ export default {
   siteUrl: 'https://example.com',
   sitemap: {
     output: 'dist/my-portfolio/browser/sitemap.xml',
-    routes: ['/', '/about', '/projects', '/contact'],
     exclude: ['/404', '/admin'],
   },
 };
@@ -76,7 +76,23 @@ npx ngx-seo-kit
 When finished, the CLI displays the output path and URL count:
 
 ```text
-✓ Sitemap generated: /project/dist/my-portfolio/browser/sitemap.xml (4 URLs)
+✓ Sitemap generated: /project/dist/my-portfolio/browser/sitemap.xml (4 URLs, 4 discovered)
+```
+
+The CLI follows `provideRouter(...)` and `RouterModule.forRoot(...)`, including
+nested `children` and relative `loadChildren` imports. Redirects, wildcards, and
+parameterized paths such as `/users/:id` are skipped because they are not
+concrete sitemap URLs. Explicit `sitemap.routes` entries remain available for
+dynamic URLs and metadata, and are merged with discovered routes.
+
+To scan a non-standard source directory or disable discovery:
+
+```js
+sitemap: {
+  discoverRoutes: { root: 'projects/storefront/src' },
+  // discoverRoutes: false,
+  routes: ['/blog/generated-slug'],
+}
 ```
 
 ## Angular build integration
@@ -176,6 +192,14 @@ const xml = generateSitemap({
 });
 ```
 
+Discover routes directly:
+
+```ts
+import { discoverAngularRoutes } from 'ngx-seo-kit';
+
+const routes = await discoverAngularRoutes(process.cwd());
+```
+
 Write the sitemap to a file:
 
 ```ts
@@ -220,14 +244,16 @@ The CLI currently loads configuration files directly through Node.js, so executa
 
 ## Limitations
 
-The first release reads its route list from the configuration file. It does not automatically analyze Angular Router files or fetch dynamic blog and project slugs from an API. These features are planned for future releases.
+Dynamic parameters cannot be expanded without application data. Add those
+concrete URLs through `sitemap.routes`; fetching slugs from APIs is not yet
+automatic.
 
 ## Roadmap
 
 - [x] Configuration-based XML sitemap generation
 - [x] CLI and programmatic API
 - [x] Route normalization and validation
-- [ ] Automatic Angular route discovery
+- [x] Automatic Angular route discovery
 - [ ] Dynamic route sources
 - [ ] Sitemap indexes and splitting at 50,000 URLs
 - [ ] `robots.txt` generation with a sitemap reference

@@ -45,10 +45,9 @@ Use the arrow keys to choose one of these actions:
   a configuration already exists.
 - **Exit** closes the CLI without making changes.
 
-The guided setup asks for the site URL, sitemap output path, comma-separated
-routes, and optional excluded routes. It validates the answers and shows a
-summary for confirmation before creating `seo.config.mjs` and generating the
-first sitemap.
+The guided setup asks for the site URL, sitemap output path, and optional
+excluded routes. It automatically discovers Angular routes under `src`, then
+shows a summary before creating `seo.config.mjs` and generating the sitemap.
 
 Open the guided setup directly when you do not need the main menu:
 
@@ -61,7 +60,6 @@ Example answers:
 ```text
 Site URL (https://example.com): https://example.com
 Sitemap output path (dist/browser/sitemap.xml): dist/my-app/browser/sitemap.xml
-Routes (comma separated) (/): /, /about, /contact
 Excluded routes (comma separated, optional): /404, /admin
 ```
 
@@ -158,6 +156,7 @@ export default {
   siteUrl: 'https://example.com',
   sitemap: {
     output: 'dist/my-app/browser/sitemap.xml',
+    discoverRoutes: true,
     routes: [
       '/',
       '/about',
@@ -177,7 +176,15 @@ Required fields:
 
 - `siteUrl`: The site URL. It must use `http` or `https` and must not contain a
   query string or hash.
-- `sitemap.routes`: An array of route strings or detailed route objects.
+- `sitemap`: Sitemap generation options. Route discovery is enabled by default.
+
+Optional sitemap fields:
+
+- `routes`: Extra route strings or detailed route objects. These are merged with
+  automatically discovered routes.
+- `discoverRoutes`: `true` (default), `false`, or `{ root: 'custom/src' }`.
+- `exclude`: Routes omitted from the generated sitemap.
+- `output`: Destination for the generated XML file.
 
 Optional route fields:
 
@@ -188,6 +195,11 @@ Optional route fields:
 
 Routes listed in `exclude` are omitted. The CLI also normalizes leading and
 trailing slashes, removes URL fragments, and deduplicates routes.
+
+Discovery starts from `provideRouter(...)` or `RouterModule.forRoot(...)` and
+follows nested `children` and relative `loadChildren` imports. Redirect,
+wildcard, and parameterized routes are skipped. Add concrete dynamic URLs to
+`routes` when they are known at build time.
 
 ## Angular build integration
 

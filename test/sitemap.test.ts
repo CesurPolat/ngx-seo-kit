@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
-import { generateSitemap, writeSitemap } from '../src/index.js';
+import { discoverAngularRoutes, generateSitemap, writeSitemap } from '../src/index.js';
 
 test('generates a valid sitemap with optional metadata', () => {
   const xml = generateSitemap({
@@ -88,6 +88,42 @@ test('writes sitemap and creates missing output directories', async () => {
   assert.match(await readFile(output, 'utf8'), /<urlset/);
 });
 
+test('discovers standalone, nested and lazy Angular routes', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-routes-'));
+  const app = join(directory, 'src', 'app');
+  await mkdir(join(app, 'account'), { recursive: true });
+  await writeFile(
+    join(app, 'app.routes.ts'),
+    `import { Routes } from '@angular/router';
+     export const routes: Routes = [
+       { path: '', loadComponent: () => import('./home') },
+       { path: 'about', component: AboutPage },
+       { path: 'account', loadChildren: () => import('./account/account.routes').then(m => m.ACCOUNT_ROUTES) },
+       { path: 'legacy', redirectTo: 'about' },
+       { path: 'users/:id', component: UserPage },
+       { path: '**', component: NotFoundPage }
+     ];
+     provideRouter(routes);`,
+  );
+  await writeFile(
+    join(app, 'account', 'account.routes.ts'),
+    `export const ACCOUNT_ROUTES = [
+       { path: '', component: AccountPage },
+       { path: 'settings', component: SettingsPage },
+       { path: 'team', children: [{ path: '', component: TeamPage }, { path: 'new', component: NewTeamPage }] }
+     ];`,
+  );
+
+  assert.deepEqual(await discoverAngularRoutes(directory), [
+    '/',
+    '/about',
+    '/account',
+    '/account/settings',
+    '/account/team',
+    '/account/team/new',
+  ]);
+});
+
 test('CLI exposes init and generate commands in help', () => {
   const cli = resolve('dist/src/cli.js');
   const result = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8' });
@@ -109,4 +145,29 @@ test('CLI does not open setup prompts in non-interactive environments', async ()
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /ngx-seo-kit init/);
+});
+
+test('CLI generates a sitemap from discovered routes without configured routes', async () => {
+  const cli = resolve('dist/src/cli.js');
+  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-cli-routes-'));
+  await mkdir(join(directory, 'src', 'app'), { recursive: true });
+  await writeFile(
+    join(directory, 'src', 'app', 'app.routes.ts'),
+    `export const routes = [{ path: '', component: Home }, { path: 'about', component: About }];
+     provideRouter(routes);`,
+  );
+  await writeFile(
+    join(directory, 'seo.config.mjs'),
+    `export default { siteUrl: 'https://example.com', sitemap: { output: 'dist/sitemap.xml' } };`,
+  );
+
+  const result = spawnSync(process.execPath, [cli, 'generate'], {
+    cwd: directory,
+    encoding: 'utf8',
+    env: { ...process.env, CI: '1' },
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /2 URLs, 2 discovered/);
+  assert.match(await readFile(join(directory, 'dist', 'sitemap.xml'), 'utf8'), /\/about/);
 });

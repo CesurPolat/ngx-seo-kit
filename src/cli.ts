@@ -7,6 +7,7 @@ import { access, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { generateSitemap, writeSitemap } from './sitemap.js';
+import { discoverAngularRoutes } from './route-discovery.js';
 import type { NgxSeoConfig } from './types.js';
 import process from 'node:process';
 
@@ -86,15 +87,34 @@ async function main(): Promise<void> {
 
   validateConfig(config, configPath);
 
+  const configuredRoutes = config.sitemap.routes ?? [];
+  const discovery = config.sitemap.discoverRoutes;
+  const discoveredRoutes =
+    discovery === false
+      ? []
+      : await discoverAngularRoutes(
+          process.cwd(),
+          typeof discovery === 'object' ? discovery : {},
+        );
+  const routes = [...configuredRoutes, ...discoveredRoutes];
+
+  if (routes.length === 0) {
+    throw new Error(
+      'No Angular routes were discovered. Add sitemap.routes to the config or check sitemap.discoverRoutes.root.',
+    );
+  }
+
   const output = options.output ?? config.sitemap.output ?? 'dist/browser/sitemap.xml';
   const result = await writeSitemap({
     siteUrl: config.siteUrl,
-    routes: config.sitemap.routes,
+    routes,
     ...(config.sitemap.exclude ? { exclude: config.sitemap.exclude } : {}),
     output,
   });
 
-  console.log(`\n✓ Sitemap generated: ${result.output} (${result.urlCount} URLs)`);
+  console.log(
+    `\n✓ Sitemap generated: ${result.output} (${result.urlCount} URLs, ${discoveredRoutes.length} discovered)`,
+  );
 }
 
 function parseArguments(args: string[]): CliOptions {
@@ -281,37 +301,32 @@ async function runSetupMenu(
     default: requestedOutput ?? 'dist/browser/sitemap.xml',
     validate: (value) => value.trim().length > 0 || 'Output path cannot be empty.',
   });
-  const routesInput = await input({
-    message: 'Routes (comma separated)',
-    default: '/',
-    validate: (value) => parseList(value).length > 0 || 'Enter at least one route.',
-  });
   const excludeInput = await input({
     message: 'Excluded routes (comma separated)',
   });
 
-  const routes = parseList(routesInput);
   const exclude = parseList(excludeInput);
+  const discoveredRoutes = await discoverAngularRoutes(process.cwd());
   const config: NgxSeoConfig = {
     siteUrl: siteUrl.trim(),
     sitemap: {
       output: output.trim(),
-      routes,
       ...(exclude.length > 0 ? { exclude } : {}),
     },
   };
 
   validateConfig(config, configPath);
-  generateSitemap({
-    siteUrl: config.siteUrl,
-    routes,
-    ...(exclude.length > 0 ? { exclude } : {}),
-  });
+  if (discoveredRoutes.length === 0) {
+    throw new Error(
+      'No Angular routes were discovered under src. You can create seo.config.mjs manually and provide sitemap.routes.',
+    );
+  }
+  generateSitemap({ siteUrl: config.siteUrl, routes: discoveredRoutes });
 
   console.log('\nConfiguration summary');
   console.log(`  Site URL: ${config.siteUrl}`);
   console.log(`  Output:   ${config.sitemap.output}`);
-  console.log(`  Routes:   ${routes.length}`);
+  console.log(`  Routes:   ${discoveredRoutes.length} discovered automatically`);
   console.log(`  Excluded: ${exclude.length}`);
 
   const shouldCreate = await confirm({
@@ -384,8 +399,30 @@ function validateConfig(value: unknown, path: string): asserts value is NgxSeoCo
     throw new Error('Config must contain a non-empty siteUrl.');
   }
 
-  if (!config.sitemap || !Array.isArray(config.sitemap.routes)) {
-    throw new Error('Config must contain a sitemap.routes array.');
+  if (!config.sitemap || typeof config.sitemap !== 'object') {
+    throw new Error('Config must contain a sitemap object.');
+  }
+
+  if (config.sitemap.routes !== undefined && !Array.isArray(config.sitemap.routes)) {
+    throw new Error('sitemap.routes must be an array when provided.');
+  }
+
+  const discovery = config.sitemap.discoverRoutes;
+  if (
+    discovery !== undefined &&
+    typeof discovery !== 'boolean' &&
+    (typeof discovery !== 'object' || discovery === null)
+  ) {
+    throw new Error('sitemap.discoverRoutes must be a boolean or options object.');
+  }
+
+  if (
+    typeof discovery === 'object' &&
+    discovery !== null &&
+    discovery.root !== undefined &&
+    typeof discovery.root !== 'string'
+  ) {
+    throw new Error('sitemap.discoverRoutes.root must be a string.');
   }
 }
 
