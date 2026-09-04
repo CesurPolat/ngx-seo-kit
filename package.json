@@ -20,6 +20,7 @@
   "files": [
     "dist/src",
     "docs",
+    "seo.config.example.ts",
     "README.md",
     "LICENSE"
   ],
@@ -42,6 +43,7 @@
     "@inquirer/confirm": "^5.1.21",
     "@inquirer/input": "^4.3.1",
     "@inquirer/select": "^4.4.2",
+    "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   }
 }

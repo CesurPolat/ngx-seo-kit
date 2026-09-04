@@ -1,7 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, normalize, resolve, sep } from 'node:path';
 import ts from 'typescript';
-import type { AngularRouteDiscoveryOptions } from './types.js';
+import type { AngularRouteDiscoveryOptions, DiscoverableRoute } from './types.js';
 
 interface ParsedRouteFile {
   path: string;
@@ -9,6 +9,13 @@ interface ParsedRouteFile {
   arrays: Map<string, ts.ArrayLiteralExpression>;
   imports: Map<string, { specifier: string; exportName: string }>;
   roots: ts.Expression[];
+}
+
+/** Converts an in-memory Angular `Routes` array to concrete sitemap paths. */
+export function routesToPaths(routes: readonly DiscoverableRoute[]): string[] {
+  const discovered = new Set<string>();
+  collectRouteValues(routes, '', discovered);
+  return sortRoutes(discovered);
 }
 
 /** Discovers concrete Angular Router URLs starting from a route source file. */
@@ -100,6 +107,28 @@ function sortRoutes(routes: Set<string>): string[] {
     if (b === '/') return 1;
     return a.localeCompare(b);
   });
+}
+
+function collectRouteValues(
+  routes: readonly DiscoverableRoute[],
+  parentPath: string,
+  output: Set<string>,
+): void {
+  for (const route of routes) {
+    if (typeof route.path !== 'string') continue;
+
+    const fullPath = joinRoutePath(parentPath, route.path);
+    const isConcrete =
+      !Object.hasOwn(route, 'redirectTo') &&
+      !fullPath.split('/').some((segment) => segment === '**' || segment.startsWith(':'));
+    const hasPageTarget =
+      Object.hasOwn(route, 'component') || Object.hasOwn(route, 'loadComponent');
+
+    if (isConcrete && hasPageTarget) output.add(fullPath);
+    if (Array.isArray(route.children)) {
+      collectRouteValues(route.children, fullPath, output);
+    }
+  }
 }
 
 async function findTypeScriptFiles(directory: string): Promise<string[]> {

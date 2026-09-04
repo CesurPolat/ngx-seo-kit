@@ -6,6 +6,7 @@ import select from '@inquirer/select';
 import { access, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { tsImport } from 'tsx/esm/api';
 import { generateSitemap, writeSitemap } from './sitemap.js';
 import { discoverAngularRoutes, discoverRoutes } from './route-discovery.js';
 import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from './site-url.js';
@@ -13,6 +14,8 @@ import type { NgxSeoConfig } from './types.js';
 import process from 'node:process';
 
 const DEFAULT_CONFIG_FILES = [
+  'seo.config.ts',
+  'seo.config.mts',
   'seo.config.mjs',
   'seo.config.js',
   'seo.config.cjs',
@@ -102,11 +105,11 @@ async function main(): Promise<void> {
     }
 
     throw new Error(
-      'No routes were configured. Add discoverRoutes() or explicit URLs to sitemap.routes.',
+      'No routes were configured. Add discoverRoutes(), routesToPaths(), or explicit URLs to sitemap.routes.',
     );
   }
 
-  const output = options.output ?? config.sitemap.output ?? 'dist/browser/sitemap.xml';
+  const output = options.output ?? config.sitemap.output ?? 'public/sitemap.xml';
   const result = await writeSitemap({
     siteUrl: config.siteUrl,
     routes,
@@ -306,7 +309,7 @@ async function runSetupMenu(
   });
   const output = await input({
     message: 'Sitemap output path',
-    default: requestedOutput ?? 'dist/browser/sitemap.xml',
+    default: requestedOutput ?? 'public/sitemap.xml',
     validate: (value) => value.trim().length > 0 || 'Output path cannot be empty.',
   });
   const excludeInput = await input({
@@ -391,6 +394,7 @@ function validateSiteUrl(value: string): true | string {
 
 function serializeConfig(config: NgxSeoConfig, path: string, routeFile?: string): string {
   const extension = extname(path);
+  const isTypeScript = extension === '.ts' || extension === '.mts';
   const useResolver = routeFile !== undefined && extension !== '.cjs';
   const marker = '__NGX_SEO_KIT_DISCOVER_ROUTES__';
   const serializable = useResolver
@@ -405,14 +409,27 @@ function serializeConfig(config: NgxSeoConfig, path: string, routeFile?: string)
   }
   const annotation = `/** @type {import('ngx-seo-kit').NgxSeoConfig} */`;
 
-  return extension === '.cjs'
-    ? `${annotation}\nmodule.exports = ${value};\n`
-    : `${useResolver ? "import { discoverRoutes } from 'ngx-seo-kit';\n\n" : ''}${annotation}\nexport default ${value};\n`;
+  if (extension === '.cjs') {
+    return `${annotation}\nmodule.exports = ${value};\n`;
+  }
+
+  if (isTypeScript) {
+    const imports = useResolver
+      ? "import { defineSeoConfig, discoverRoutes } from 'ngx-seo-kit';"
+      : "import { defineSeoConfig } from 'ngx-seo-kit';";
+    return `${imports}\n\nexport default defineSeoConfig(${value});\n`;
+  }
+
+  return `${useResolver ? "import { discoverRoutes } from 'ngx-seo-kit';\n\n" : ''}${annotation}\nexport default ${value};\n`;
 }
 
 async function loadConfig(path: string): Promise<unknown> {
   try {
-    const module = (await import(pathToFileURL(path).href)) as { default?: unknown };
+    const extension = extname(path);
+    const url = pathToFileURL(path).href;
+    const module = (extension === '.ts' || extension === '.mts' || extension === '.cts'
+      ? await tsImport(url, import.meta.url)
+      : await import(url)) as { default?: unknown };
     return module.default;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -472,7 +489,7 @@ Commands:
   init                 Create a config through the guided setup.
 
 Options:
-  -c, --config <path>  Config file (default: seo.config.mjs)
+  -c, --config <path>  Config file (default: seo.config.ts)
   -o, --output <path>  Override the sitemap output path
   -h, --help           Show this help
 
@@ -480,8 +497,8 @@ Examples:
   npx ngx-seo-kit
   npx ngx-seo-kit init
   npx ngx-seo-kit generate
-  npx ngx-seo-kit generate --config config/seo.production.mjs
-  npx ngx-seo-kit generate --output dist/browser/sitemap.xml
+  npx ngx-seo-kit generate --config config/seo.production.ts
+  npx ngx-seo-kit generate --output public/sitemap.xml
 `);
 }
 

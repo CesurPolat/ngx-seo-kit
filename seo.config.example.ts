@@ -1,10 +1,9 @@
-import { discoverRoutes } from 'ngx-seo-kit';
+import { defineSeoConfig, discoverRoutes } from 'ngx-seo-kit';
 
-/** @type {import('ngx-seo-kit').NgxSeoConfig} */
-export default {
+export default defineSeoConfig({
   siteUrl: 'https://example.com',
   sitemap: {
-    output: 'dist/browser/sitemap.xml',
+    output: 'public/sitemap.xml',
     stylesheet: {
       href: '/sitemap.xsl',
       title: 'Example Sitemap',
@@ -15,4 +14,4 @@ export default {
     ],
     exclude: ['/404', '/admin'],
   },
-};
+});

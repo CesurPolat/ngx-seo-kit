@@ -46,7 +46,7 @@ npx ngx-seo-kit
 
 Choose **Create configuration** to start the guided setup. The setup asks for
 your site URL, sitemap output path, and excluded routes. It discovers Angular
-routes from `src/app/app.routes.ts`, previews the configuration, creates `seo.config.mjs`, and
+routes from `src/app/app.routes.ts`, previews the configuration, creates `seo.config.ts`, and
 generates the first sitemap. If no Angular routes are found, setup still creates
 the configuration with an empty `sitemap.routes` array so you can add public
 paths manually; sitemap generation is skipped until routes are available.
@@ -57,23 +57,22 @@ environments, where the configuration file must already exist.
 
 ### Manual configuration
 
-You can also create `seo.config.mjs` manually in the project root:
+You can also create `seo.config.ts` manually in the project root:
 
-```js
-import { discoverRoutes } from 'ngx-seo-kit';
+```ts
+import { defineSeoConfig, discoverRoutes } from 'ngx-seo-kit';
 
-/** @type {import('ngx-seo-kit').NgxSeoConfig} */
-export default {
+export default defineSeoConfig({
   siteUrl: 'https://example.com',
   sitemap: {
     routes: [
       ...await discoverRoutes('./src/app/app.routes.ts'),
     ],
-    output: 'dist/my-portfolio/browser/sitemap.xml',
+    output: 'public/sitemap.xml',
     stylesheet: true,
     exclude: ['/404', '/admin'],
   },
-};
+});
 ```
 
 Generate the sitemap:
@@ -85,7 +84,7 @@ npx ngx-seo-kit
 When finished, the CLI displays the output path and URL count:
 
 ```text
-✓ Sitemap generated: /project/dist/my-portfolio/browser/sitemap.xml (4 URLs)
+✓ Sitemap generated: /project/public/sitemap.xml (4 URLs)
 ✓ Sitemap stylesheet generated: /project/dist/my-portfolio/browser/sitemap.xsl
 ```
 
@@ -117,6 +116,26 @@ sitemap: {
 }
 ```
 
+Alternatively, import an Angular `Routes` variable and convert its eager route
+tree directly:
+
+```ts
+import { defineSeoConfig, routesToPaths } from 'ngx-seo-kit';
+import { routes } from './src/app/app.routes';
+
+export default defineSeoConfig({
+  siteUrl: 'https://example.com',
+  sitemap: {
+    routes: routesToPaths(routes),
+  },
+});
+```
+
+`routesToPaths(...)` walks in-memory `children` arrays but does not execute
+`loadChildren` functions. Use file-based `discoverRoutes(...)` when lazy route
+discovery is required or importing the application route tree has runtime side
+effects.
+
 ## Angular build integration
 
 Run the sitemap command after the Angular build:
@@ -124,12 +143,13 @@ Run the sitemap command after the Angular build:
 ```json
 {
   "scripts": {
-    "build": "ng build && ngx-seo-kit generate"
+    "build": "ngx-seo-kit generate && ng build"
   }
 }
 ```
 
-The `sitemap.output` value must point to the deployed directory of your Angular application. In modern Angular SSR projects, this is usually `dist/<project-name>/browser`; it may differ for static-only builds.
+Angular copies `public/sitemap.xml` into the build output. Generate the sitemap
+before `ng build` so the latest file is included in the deployment.
 
 After deployment, the following URL should return the XML file directly:
 
@@ -186,7 +206,7 @@ Commands:
   init                 Open the setup menu and create a configuration file
 
 Options:
-  -c, --config <path>  Configuration file (default: seo.config.mjs)
+  -c, --config <path>  Configuration file (default: seo.config.ts)
   -o, --output <path>  Override the output path from the configuration
   -h, --help           Show help
 ```
@@ -194,12 +214,14 @@ Options:
 To use a different configuration file or output path:
 
 ```bash
-npx ngx-seo-kit generate --config config/seo.production.mjs --output dist/browser/sitemap.xml
+npx ngx-seo-kit generate --config config/seo.production.ts --output public/sitemap.xml
 ```
 
-When no configuration path is provided, the CLI searches for `seo.config.mjs`, `seo.config.js`, and `seo.config.cjs`, in that order.
+When no configuration path is provided, the CLI searches for `seo.config.ts`,
+`seo.config.mts`, `seo.config.mjs`, `seo.config.js`, and `seo.config.cjs`, in
+that order.
 
-A working example is available in [seo.config.example.mjs](./seo.config.example.mjs).
+A working example is available in [seo.config.example.ts](./seo.config.example.ts).
 
 ## Programmatic API
 
@@ -222,6 +244,15 @@ import { discoverRoutes } from 'ngx-seo-kit';
 const routes = await discoverRoutes('./src/app/app.routes.ts');
 ```
 
+Convert an imported Angular route variable:
+
+```ts
+import { routesToPaths } from 'ngx-seo-kit';
+import { routes } from './src/app/app.routes';
+
+const paths = routesToPaths(routes);
+```
+
 Write the sitemap to a file:
 
 ```ts
@@ -230,7 +261,7 @@ import { writeSitemap } from 'ngx-seo-kit';
 const result = await writeSitemap({
   siteUrl: 'https://example.com',
   routes: ['/', '/projects'],
-  output: 'dist/browser/sitemap.xml',
+  output: 'public/sitemap.xml',
 });
 
 console.log(result.output, result.urlCount);
@@ -249,7 +280,8 @@ export default defineSeoConfig({
 });
 ```
 
-The CLI currently loads configuration files directly through Node.js, so executable configurations must use the `.mjs`, `.js`, or `.cjs` extension.
+The CLI runs `.ts` and `.mts` configurations through its TypeScript loader.
+JavaScript `.mjs`, `.js`, and `.cjs` configurations remain supported.
 
 ## Generated XML
 

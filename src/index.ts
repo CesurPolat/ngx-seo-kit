@@ -1,10 +1,15 @@
 export { defineSeoConfig } from './config.js';
-export { discoverAngularRoutes, discoverRoutes } from './route-discovery.js';
+export {
+  discoverAngularRoutes,
+  discoverRoutes,
+  routesToPaths,
+} from './route-discovery.js';
 export { generateSitemap, generateSitemapStylesheet, writeSitemap } from './sitemap.js';
 export { CHANGE_FREQUENCIES } from './types.js';
 export type {
   ChangeFrequency,
   AngularRouteDiscoveryOptions,
+  DiscoverableRoute,
   GenerateSitemapOptions,
   NgxSeoConfig,
   SitemapOptions,
