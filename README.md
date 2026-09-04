@@ -47,7 +47,9 @@ npx ngx-seo-kit
 Choose **Create configuration** to start the guided setup. The setup asks for
 your site URL, sitemap output path, and excluded routes. It discovers Angular
 routes under `src`, previews the configuration, creates `seo.config.mjs`, and
-generates the first sitemap.
+generates the first sitemap. If no Angular routes are found, setup still creates
+the configuration with an empty `sitemap.routes` array so you can add public
+paths manually; sitemap generation is skipped until routes are available.
 
 You can skip the main menu and open the setup directly with
 `npx ngx-seo-kit init`. Interactive menus are disabled in CI and build

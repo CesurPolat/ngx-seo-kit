@@ -57,6 +57,7 @@ async function main(): Promise<void> {
 
   let configPath: string;
   let config: unknown;
+  let configCreated = false;
 
   if (command === 'init') {
     configPath = requestedConfigPath ?? resolve(DEFAULT_CONFIG_FILES[0]);
@@ -69,6 +70,7 @@ async function main(): Promise<void> {
 
     assertInteractiveTerminal();
     config = await runSetupMenu(configPath, options.output);
+    configCreated = true;
   } else {
     const existingConfigPath = requestedConfigPath
       ? await requireConfig(requestedConfigPath)
@@ -82,6 +84,7 @@ async function main(): Promise<void> {
       configPath = resolve(DEFAULT_CONFIG_FILES[0]);
       console.log("No SEO config found. Let's create one.\n");
       config = await runSetupMenu(configPath, options.output);
+      configCreated = true;
     }
   }
 
@@ -99,6 +102,13 @@ async function main(): Promise<void> {
   const routes = [...configuredRoutes, ...discoveredRoutes];
 
   if (routes.length === 0) {
+    if (configCreated) {
+      console.log(
+        '\nNo Angular routes were discovered. Config was created; add sitemap.routes before generating the sitemap.',
+      );
+      return;
+    }
+
     throw new Error(
       'No Angular routes were discovered. Add sitemap.routes to the config or check sitemap.discoverRoutes.root.',
     );
@@ -318,17 +328,15 @@ async function runSetupMenu(
     sitemap: {
       output: output.trim(),
       stylesheet: true,
+      ...(discoveredRoutes.length === 0 ? { routes: [] } : {}),
       ...(exclude.length > 0 ? { exclude } : {}),
     },
   };
 
   validateConfig(config, configPath);
-  if (discoveredRoutes.length === 0) {
-    throw new Error(
-      'No Angular routes were discovered under src. You can create seo.config.mjs manually and provide sitemap.routes.',
-    );
+  if (discoveredRoutes.length > 0) {
+    generateSitemap({ siteUrl: config.siteUrl, routes: discoveredRoutes });
   }
-  generateSitemap({ siteUrl: config.siteUrl, routes: discoveredRoutes });
 
   console.log('\nConfiguration summary');
   console.log(`  Site URL: ${config.siteUrl}`);
@@ -336,9 +344,15 @@ async function runSetupMenu(
   console.log(`  Routes:   ${discoveredRoutes.length} discovered automatically`);
   console.log('  Browser:  Styled HTML table');
   console.log(`  Excluded: ${exclude.length}`);
+  if (discoveredRoutes.length === 0) {
+    console.log('  Note:     Add public paths to sitemap.routes before generation');
+  }
 
   const shouldCreate = await confirm({
-    message: 'Create configuration and generate the sitemap?',
+    message:
+      discoveredRoutes.length > 0
+        ? 'Create configuration and generate the sitemap?'
+        : 'Create configuration without generating the sitemap?',
     default: true,
   });
 

@@ -48,6 +48,9 @@ Use the arrow keys to choose one of these actions:
 The guided setup asks for the site URL, sitemap output path, and optional
 excluded routes. It automatically discovers Angular routes under `src`, then
 shows a summary before creating `seo.config.mjs` and generating the sitemap.
+When no routes are discovered, setup creates the config with
+`sitemap.routes: []` and skips sitemap generation. Add public paths to that
+array, then run `ngx-seo-kit generate`.
 
 Open the guided setup directly when you do not need the main menu:
 
