@@ -20,9 +20,7 @@ export interface SitemapRoute {
 export type SitemapRouteInput = string | SitemapRoute;
 
 export interface SitemapOptions {
-  routes?: SitemapRouteInput[];
-  /** Automatically discover Angular routes. Defaults to true. */
-  discoverRoutes?: boolean | AngularRouteDiscoveryOptions;
+  routes: SitemapRouteInput[];
   stylesheet?: boolean | SitemapStylesheetOptions;
   exclude?: string[];
   output?: string;

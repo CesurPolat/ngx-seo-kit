@@ -46,7 +46,7 @@ npx ngx-seo-kit
 
 Choose **Create configuration** to start the guided setup. The setup asks for
 your site URL, sitemap output path, and excluded routes. It discovers Angular
-routes under `src`, previews the configuration, creates `seo.config.mjs`, and
+routes from `src/app/app.routes.ts`, previews the configuration, creates `seo.config.mjs`, and
 generates the first sitemap. If no Angular routes are found, setup still creates
 the configuration with an empty `sitemap.routes` array so you can add public
 paths manually; sitemap generation is skipped until routes are available.
@@ -60,10 +60,15 @@ environments, where the configuration file must already exist.
 You can also create `seo.config.mjs` manually in the project root:
 
 ```js
+import { discoverRoutes } from 'ngx-seo-kit';
+
 /** @type {import('ngx-seo-kit').NgxSeoConfig} */
 export default {
   siteUrl: 'https://example.com',
   sitemap: {
+    routes: [
+      ...await discoverRoutes('./src/app/app.routes.ts'),
+    ],
     output: 'dist/my-portfolio/browser/sitemap.xml',
     stylesheet: true,
     exclude: ['/404', '/admin'],
@@ -80,7 +85,7 @@ npx ngx-seo-kit
 When finished, the CLI displays the output path and URL count:
 
 ```text
-✓ Sitemap generated: /project/dist/my-portfolio/browser/sitemap.xml (4 URLs, 4 discovered)
+✓ Sitemap generated: /project/dist/my-portfolio/browser/sitemap.xml (4 URLs)
 ✓ Sitemap stylesheet generated: /project/dist/my-portfolio/browser/sitemap.xsl
 ```
 
@@ -95,19 +100,20 @@ stylesheet: {
 }
 ```
 
-The CLI follows `provideRouter(...)` and `RouterModule.forRoot(...)`, including
+`discoverRoutes(...)` follows `provideRouter(...)` and `RouterModule.forRoot(...)`, including
 nested `children` and relative `loadChildren` imports. Redirects, wildcards, and
 parameterized paths such as `/users/:id` are skipped because they are not
-concrete sitemap URLs. Explicit `sitemap.routes` entries remain available for
-dynamic URLs and metadata, and are merged with discovered routes.
+concrete sitemap URLs. Its result is spread into `sitemap.routes`, where it can
+be combined with explicit URLs and route metadata.
 
-To scan a non-standard source directory or disable discovery:
+To scan a non-standard route file or add a manual URL:
 
 ```js
 sitemap: {
-  discoverRoutes: { root: 'projects/storefront/src' },
-  // discoverRoutes: false,
-  routes: ['/blog/generated-slug'],
+  routes: [
+    ...await discoverRoutes('./projects/storefront/src/app/app.routes.ts'),
+    '/blog/generated-slug',
+  ],
 }
 ```
 
@@ -211,9 +217,9 @@ const xml = generateSitemap({
 Discover routes directly:
 
 ```ts
-import { discoverAngularRoutes } from 'ngx-seo-kit';
+import { discoverRoutes } from 'ngx-seo-kit';
 
-const routes = await discoverAngularRoutes(process.cwd());
+const routes = await discoverRoutes('./src/app/app.routes.ts');
 ```
 
 Write the sitemap to a file:

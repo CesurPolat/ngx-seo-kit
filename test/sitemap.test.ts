@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
+import { pathToFileURL } from 'node:url';
 import {
   discoverAngularRoutes,
+  discoverRoutes,
   generateSitemap,
   generateSitemapStylesheet,
   writeSitemap,
@@ -169,6 +171,14 @@ test('discovers standalone, nested and lazy Angular routes', async () => {
     '/account/team',
     '/account/team/new',
   ]);
+  assert.deepEqual(await discoverRoutes('src/app/app.routes.ts', directory), [
+    '/',
+    '/about',
+    '/account',
+    '/account/settings',
+    '/account/team',
+    '/account/team/new',
+  ]);
 });
 
 test('discovers routes imported by the standard Angular app config', async () => {
@@ -219,8 +229,9 @@ test('CLI does not open setup prompts in non-interactive environments', async ()
   assert.match(result.stderr, /ngx-seo-kit init/);
 });
 
-test('CLI generates a sitemap from discovered routes without configured routes', async () => {
+test('CLI generates a sitemap from routes discovered in the config', async () => {
   const cli = resolve('dist/src/cli.js');
+  const packageEntry = pathToFileURL(resolve('dist/src/index.js')).href;
   const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-cli-routes-'));
   await mkdir(join(directory, 'src', 'app'), { recursive: true });
   await writeFile(
@@ -230,7 +241,15 @@ test('CLI generates a sitemap from discovered routes without configured routes',
   );
   await writeFile(
     join(directory, 'seo.config.mjs'),
-    `export default { siteUrl: 'https://example.com', sitemap: { output: 'dist/sitemap.xml', stylesheet: true } };`,
+    `import { discoverRoutes } from ${JSON.stringify(packageEntry)};
+     export default {
+       siteUrl: 'https://example.com',
+       sitemap: {
+         routes: [...await discoverRoutes('./src/app/app.routes.ts')],
+         output: 'dist/sitemap.xml',
+         stylesheet: true
+       }
+     };`,
   );
 
   const result = spawnSync(process.execPath, [cli, 'generate'], {
@@ -240,7 +259,7 @@ test('CLI generates a sitemap from discovered routes without configured routes',
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /2 URLs, 2 discovered/);
+  assert.match(result.stdout, /2 URLs/);
   assert.match(await readFile(join(directory, 'dist', 'sitemap.xml'), 'utf8'), /\/about/);
   assert.match(result.stdout, /Sitemap stylesheet generated/);
   assert.match(await readFile(join(directory, 'dist', 'sitemap.xsl'), 'utf8'), /<table>/);

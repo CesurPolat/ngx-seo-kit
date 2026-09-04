@@ -7,7 +7,7 @@ import { access, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { generateSitemap, writeSitemap } from './sitemap.js';
-import { discoverAngularRoutes } from './route-discovery.js';
+import { discoverAngularRoutes, discoverRoutes } from './route-discovery.js';
 import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from './site-url.js';
 import type { NgxSeoConfig } from './types.js';
 import process from 'node:process';
@@ -91,16 +91,7 @@ async function main(): Promise<void> {
 
   validateConfig(config, configPath);
 
-  const configuredRoutes = config.sitemap.routes ?? [];
-  const discovery = config.sitemap.discoverRoutes ?? true;
-  const discoveredRoutes =
-    discovery === false
-      ? []
-      : await discoverAngularRoutes(
-          process.cwd(),
-          typeof discovery === 'object' ? discovery : {},
-        );
-  const routes = [...configuredRoutes, ...discoveredRoutes];
+  const routes = config.sitemap.routes;
 
   if (routes.length === 0) {
     if (configCreated) {
@@ -111,7 +102,7 @@ async function main(): Promise<void> {
     }
 
     throw new Error(
-      'No Angular routes were discovered. Add sitemap.routes to the config or check sitemap.discoverRoutes.root.',
+      'No routes were configured. Add discoverRoutes() or explicit URLs to sitemap.routes.',
     );
   }
 
@@ -127,7 +118,7 @@ async function main(): Promise<void> {
   });
 
   console.log(
-    `\n✓ Sitemap generated: ${result.output} (${result.urlCount} URLs, ${discoveredRoutes.length} discovered)`,
+    `\n✓ Sitemap generated: ${result.output} (${result.urlCount} URLs)`,
   );
   if (result.stylesheetOutput) {
     console.log(`✓ Sitemap stylesheet generated: ${result.stylesheetOutput}`);
@@ -323,14 +314,17 @@ async function runSetupMenu(
   });
 
   const exclude = parseList(excludeInput);
-  const discoveredRoutes = await discoverAngularRoutes(process.cwd());
+  const defaultRouteFile = 'src/app/app.routes.ts';
+  const hasDefaultRouteFile = await fileExists(resolve(defaultRouteFile));
+  const discoveredRoutes = hasDefaultRouteFile
+    ? await discoverRoutes(defaultRouteFile)
+    : await discoverAngularRoutes(process.cwd());
   const config: NgxSeoConfig = {
     siteUrl: normalizeSiteUrl(withDefaultProtocol(siteUrl)),
     sitemap: {
       output: output.trim(),
-      discoverRoutes: true,
       stylesheet: true,
-      ...(discoveredRoutes.length === 0 ? { routes: [] } : {}),
+      routes: discoveredRoutes,
       ...(exclude.length > 0 ? { exclude } : {}),
     },
   };
@@ -363,10 +357,14 @@ async function runSetupMenu(
   }
 
   await mkdir(dirname(configPath), { recursive: true });
-  await writeFile(configPath, serializeConfig(config, configPath), {
-    encoding: 'utf8',
-    flag: 'wx',
-  });
+  await writeFile(
+    configPath,
+    serializeConfig(config, configPath, hasDefaultRouteFile ? `./${defaultRouteFile}` : undefined),
+    {
+      encoding: 'utf8',
+      flag: 'wx',
+    },
+  );
   console.log(`\n✓ Config created: ${configPath}`);
   return config;
 }
@@ -391,13 +389,25 @@ function validateSiteUrl(value: string): true | string {
   }
 }
 
-function serializeConfig(config: NgxSeoConfig, path: string): string {
-  const value = JSON.stringify(config, null, 2);
+function serializeConfig(config: NgxSeoConfig, path: string, routeFile?: string): string {
+  const extension = extname(path);
+  const useResolver = routeFile !== undefined && extension !== '.cjs';
+  const marker = '__NGX_SEO_KIT_DISCOVER_ROUTES__';
+  const serializable = useResolver
+    ? { ...config, sitemap: { ...config.sitemap, routes: [marker] } }
+    : config;
+  let value = JSON.stringify(serializable, null, 2);
+  if (useResolver) {
+    value = value.replace(
+      JSON.stringify(marker),
+      `...await discoverRoutes(${JSON.stringify(routeFile)})`,
+    );
+  }
   const annotation = `/** @type {import('ngx-seo-kit').NgxSeoConfig} */`;
 
-  return extname(path) === '.cjs'
+  return extension === '.cjs'
     ? `${annotation}\nmodule.exports = ${value};\n`
-    : `${annotation}\nexport default ${value};\n`;
+    : `${useResolver ? "import { discoverRoutes } from 'ngx-seo-kit';\n\n" : ''}${annotation}\nexport default ${value};\n`;
 }
 
 async function loadConfig(path: string): Promise<unknown> {
@@ -425,26 +435,8 @@ function validateConfig(value: unknown, path: string): asserts value is NgxSeoCo
     throw new Error('Config must contain a sitemap object.');
   }
 
-  if (config.sitemap.routes !== undefined && !Array.isArray(config.sitemap.routes)) {
-    throw new Error('sitemap.routes must be an array when provided.');
-  }
-
-  const discovery = config.sitemap.discoverRoutes;
-  if (
-    discovery !== undefined &&
-    typeof discovery !== 'boolean' &&
-    (typeof discovery !== 'object' || discovery === null)
-  ) {
-    throw new Error('sitemap.discoverRoutes must be a boolean or options object.');
-  }
-
-  if (
-    typeof discovery === 'object' &&
-    discovery !== null &&
-    discovery.root !== undefined &&
-    typeof discovery.root !== 'string'
-  ) {
-    throw new Error('sitemap.discoverRoutes.root must be a string.');
+  if (!Array.isArray(config.sitemap.routes)) {
+    throw new Error('sitemap.routes must be an array.');
   }
 
   const stylesheet = config.sitemap.stylesheet;

@@ -1,5 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join, normalize, resolve } from 'node:path';
+import { dirname, isAbsolute, join, normalize, resolve, sep } from 'node:path';
 import ts from 'typescript';
 import type { AngularRouteDiscoveryOptions } from './types.js';
 
@@ -11,6 +11,30 @@ interface ParsedRouteFile {
   roots: ts.Expression[];
 }
 
+/** Discovers concrete Angular Router URLs starting from a route source file. */
+export async function discoverRoutes(
+  routeFile: string,
+  projectDirectory = process.cwd(),
+): Promise<string[]> {
+  const entryPath = normalize(resolve(projectDirectory, routeFile));
+  const sourceRoot = inferSourceRoot(entryPath);
+  const paths = await findTypeScriptFiles(sourceRoot);
+  const files = await parseRouteFiles(paths);
+  const entry = files.get(entryPath);
+
+  if (!entry) {
+    throw new Error(`Angular route file not found: "${entryPath}".`);
+  }
+
+  const roots = entry.roots.length > 0 ? entry.roots : preferredRouteArrays(entry);
+  const discovered = new Set<string>();
+  for (const expression of roots) {
+    collectRoutes(entry, expression, '', files, discovered, new Set());
+  }
+
+  return sortRoutes(discovered);
+}
+
 /** Discovers static Angular Router URLs starting at provideRouter/forRoot. */
 export async function discoverAngularRoutes(
   projectDirectory = process.cwd(),
@@ -18,14 +42,7 @@ export async function discoverAngularRoutes(
 ): Promise<string[]> {
   const sourceRoot = resolve(projectDirectory, options.root ?? 'src');
   const paths = await findTypeScriptFiles(sourceRoot);
-  const files = new Map<string, ParsedRouteFile>();
-
-  await Promise.all(
-    paths.map(async (path) => {
-      const parsed = parseRouteFile(path, await readFile(path, 'utf8'));
-      files.set(normalize(path), parsed);
-    }),
-  );
+  const files = await parseRouteFiles(paths);
 
   const roots = [...files.values()].flatMap((file) =>
     file.roots.map((expression) => ({ file, expression })),
@@ -35,8 +52,9 @@ export async function discoverAngularRoutes(
   if (roots.length === 0) {
     for (const file of files.values()) {
       if (!/(^|[\\/])app\.routes\.ts$/i.test(file.path)) continue;
-      const preferred = file.arrays.get('routes') ?? file.arrays.get('appRoutes');
-      if (preferred) roots.push({ file, expression: preferred });
+      for (const expression of preferredRouteArrays(file)) {
+        roots.push({ file, expression });
+      }
     }
   }
 
@@ -45,7 +63,39 @@ export async function discoverAngularRoutes(
     collectRoutes(root.file, root.expression, '', files, discovered, new Set());
   }
 
-  return [...discovered].sort((a, b) => {
+  return sortRoutes(discovered);
+}
+
+async function parseRouteFiles(paths: string[]): Promise<Map<string, ParsedRouteFile>> {
+  const entries = await Promise.all(
+    paths.map(async (path) => [
+      normalize(path),
+      parseRouteFile(path, await readFile(path, 'utf8')),
+    ] as const),
+  );
+  return new Map(entries);
+}
+
+function preferredRouteArrays(file: ParsedRouteFile): ts.ArrayLiteralExpression[] {
+  const named = file.arrays.get('routes') ?? file.arrays.get('appRoutes');
+  if (named) return [named];
+
+  const routeArrays = [...file.arrays.entries()]
+    .filter(([name]) => /routes$/i.test(name))
+    .map(([, array]) => array);
+  if (routeArrays.length > 0) return routeArrays;
+
+  return file.arrays.size === 1 ? [...file.arrays.values()] : [];
+}
+
+function inferSourceRoot(entryPath: string): string {
+  const parts = entryPath.split(sep);
+  const sourceIndex = parts.lastIndexOf('src');
+  return sourceIndex >= 0 ? parts.slice(0, sourceIndex + 1).join(sep) : dirname(entryPath);
+}
+
+function sortRoutes(routes: Set<string>): string[] {
+  return [...routes].sort((a, b) => {
     if (a === '/') return -1;
     if (b === '/') return 1;
     return a.localeCompare(b);

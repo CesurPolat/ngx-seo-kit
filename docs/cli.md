@@ -154,15 +154,16 @@ The CLI creates missing output directories automatically.
 The recommended filename and format is `seo.config.mjs`:
 
 ```js
+import { discoverRoutes } from 'ngx-seo-kit';
+
 /** @type {import('ngx-seo-kit').NgxSeoConfig} */
 export default {
   siteUrl: 'https://example.com',
   sitemap: {
     output: 'dist/my-app/browser/sitemap.xml',
-    discoverRoutes: true,
     stylesheet: true,
     routes: [
-      '/',
+      ...await discoverRoutes('./src/app/app.routes.ts'),
       '/about',
       {
         path: '/blog',
@@ -180,13 +181,12 @@ Required fields:
 
 - `siteUrl`: The site URL. It must use `http` or `https` and must not contain a
   query string or hash.
-- `sitemap`: Sitemap generation options. Route discovery is enabled by default.
+- `sitemap`: Sitemap generation options.
+- `sitemap.routes`: Route strings or detailed route objects. Spread the result
+  of `discoverRoutes('./path/to/app.routes.ts')` here to include Angular routes.
 
 Optional sitemap fields:
 
-- `routes`: Extra route strings or detailed route objects. These are merged with
-  automatically discovered routes.
-- `discoverRoutes`: `true` (default), `false`, or `{ root: 'custom/src' }`.
 - `stylesheet`: `true` to generate a sibling `sitemap.xsl`, or an object with
   optional `href`, `output`, and `title` fields. Browsers render the XML as an
   HTML table while crawlers continue to receive standard sitemap XML.
@@ -203,8 +203,9 @@ Optional route fields:
 Routes listed in `exclude` are omitted. The CLI also normalizes leading and
 trailing slashes, removes URL fragments, and deduplicates routes.
 
-Discovery starts from `provideRouter(...)` or `RouterModule.forRoot(...)` and
-follows nested `children` and relative `loadChildren` imports. Redirect,
+`discoverRoutes(...)` starts from the supplied route file and follows
+`provideRouter(...)`, `RouterModule.forRoot(...)`, nested `children`, and relative
+`loadChildren` imports. Redirect,
 wildcard, and parameterized routes are skipped. Add concrete dynamic URLs to
 `routes` when they are known at build time.
 
