@@ -7,6 +7,7 @@ interface ParsedRouteFile {
   path: string;
   sourceFile: ts.SourceFile;
   arrays: Map<string, ts.ArrayLiteralExpression>;
+  imports: Map<string, { specifier: string; exportName: string }>;
   roots: ts.Expression[];
 }
 
@@ -83,9 +84,29 @@ async function findTypeScriptFiles(directory: string): Promise<string[]> {
 function parseRouteFile(path: string, source: string): ParsedRouteFile {
   const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);
   const arrays = new Map<string, ts.ArrayLiteralExpression>();
+  const imports = new Map<string, { specifier: string; exportName: string }>();
   const roots: ts.Expression[] = [];
 
   const visit = (node: ts.Node): void => {
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteral(node.moduleSpecifier) &&
+      node.importClause
+    ) {
+      const specifier = node.moduleSpecifier.text;
+      if (node.importClause.name) {
+        imports.set(node.importClause.name.text, { specifier, exportName: 'default' });
+      }
+      const bindings = node.importClause.namedBindings;
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const binding of bindings.elements) {
+          imports.set(binding.name.text, {
+            specifier,
+            exportName: binding.propertyName?.text ?? binding.name.text,
+          });
+        }
+      }
+    }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
       const array = unwrapArray(node.initializer);
       if (array) arrays.set(node.name.text, array);
@@ -104,7 +125,7 @@ function parseRouteFile(path: string, source: string): ParsedRouteFile {
   };
   visit(sourceFile);
 
-  return { path, sourceFile, arrays, roots };
+  return { path, sourceFile, arrays, imports, roots };
 }
 
 function collectRoutes(
@@ -115,7 +136,7 @@ function collectRoutes(
   output: Set<string>,
   visiting: Set<string>,
 ): void {
-  const array = resolveArray(file, expression);
+  const array = resolveArray(file, expression, files);
   if (!array) return;
 
   const visitKey = `${file.path}:${array.pos}:${parentPath}`;
@@ -151,11 +172,21 @@ function collectRoutes(
 function resolveArray(
   file: ParsedRouteFile,
   expression: ts.Expression | undefined,
+  files: Map<string, ParsedRouteFile>,
 ): ts.ArrayLiteralExpression | undefined {
   const direct = unwrapArray(expression);
   if (direct) return direct;
   const value = unwrapExpression(expression);
-  return value && ts.isIdentifier(value) ? file.arrays.get(value.text) : undefined;
+  if (!value || !ts.isIdentifier(value)) return undefined;
+
+  const local = file.arrays.get(value.text);
+  if (local) return local;
+
+  const imported = file.imports.get(value.text);
+  if (!imported) return undefined;
+  return resolveImportedFile(file.path, imported.specifier, files)?.arrays.get(
+    imported.exportName,
+  );
 }
 
 function unwrapArray(

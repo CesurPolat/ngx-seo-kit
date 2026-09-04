@@ -163,6 +163,31 @@ test('discovers standalone, nested and lazy Angular routes', async () => {
   ]);
 });
 
+test('discovers routes imported by the standard Angular app config', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-app-config-routes-'));
+  const app = join(directory, 'src', 'app');
+  await mkdir(app, { recursive: true });
+  await writeFile(
+    join(app, 'app.routes.ts'),
+    `import { Routes } from '@angular/router';
+     export const routes: Routes = [
+       { path: '', component: HomePage },
+       { path: 'about', component: AboutPage }
+     ];`,
+  );
+  await writeFile(
+    join(app, 'app.config.ts'),
+    `import { ApplicationConfig } from '@angular/core';
+     import { provideRouter } from '@angular/router';
+     import { routes as appRoutes } from './app.routes';
+     export const appConfig: ApplicationConfig = {
+       providers: [provideRouter(appRoutes)]
+     };`,
+  );
+
+  assert.deepEqual(await discoverAngularRoutes(directory), ['/', '/about']);
+});
+
 test('CLI exposes init and generate commands in help', () => {
   const cli = resolve('dist/src/cli.js');
   const result = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8' });
