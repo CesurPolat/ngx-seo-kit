@@ -13,6 +13,7 @@ A type-safe SEO toolkit that generates `sitemap.xml` files for Angular applicati
 - Route and trailing-slash normalization
 - Route exclusion
 - Safe XML character escaping
+- Optional browser-friendly HTML table through an XSL stylesheet
 - Command-line interface and programmatic API
 - Guided interactive CLI setup
 
@@ -62,6 +63,7 @@ export default {
   siteUrl: 'https://example.com',
   sitemap: {
     output: 'dist/my-portfolio/browser/sitemap.xml',
+    stylesheet: true,
     exclude: ['/404', '/admin'],
   },
 };
@@ -77,6 +79,18 @@ When finished, the CLI displays the output path and URL count:
 
 ```text
 ✓ Sitemap generated: /project/dist/my-portfolio/browser/sitemap.xml (4 URLs, 4 discovered)
+✓ Sitemap stylesheet generated: /project/dist/my-portfolio/browser/sitemap.xsl
+```
+
+With `stylesheet: true`, search engines still receive a standard XML sitemap,
+while browsers render it as a responsive HTML table. For customization:
+
+```js
+stylesheet: {
+  href: '/sitemap.xsl',
+  output: 'dist/my-portfolio/browser/sitemap.xsl',
+  title: 'Cesur Polat Sitemap',
+}
 ```
 
 The CLI follows `provideRouter(...)` and `RouterModule.forRoot(...)`, including

@@ -109,12 +109,18 @@ async function main(): Promise<void> {
     siteUrl: config.siteUrl,
     routes,
     ...(config.sitemap.exclude ? { exclude: config.sitemap.exclude } : {}),
+    ...(config.sitemap.stylesheet !== undefined
+      ? { stylesheet: config.sitemap.stylesheet }
+      : {}),
     output,
   });
 
   console.log(
     `\n✓ Sitemap generated: ${result.output} (${result.urlCount} URLs, ${discoveredRoutes.length} discovered)`,
   );
+  if (result.stylesheetOutput) {
+    console.log(`✓ Sitemap stylesheet generated: ${result.stylesheetOutput}`);
+  }
 }
 
 function parseArguments(args: string[]): CliOptions {
@@ -311,6 +317,7 @@ async function runSetupMenu(
     siteUrl: siteUrl.trim(),
     sitemap: {
       output: output.trim(),
+      stylesheet: true,
       ...(exclude.length > 0 ? { exclude } : {}),
     },
   };
@@ -327,6 +334,7 @@ async function runSetupMenu(
   console.log(`  Site URL: ${config.siteUrl}`);
   console.log(`  Output:   ${config.sitemap.output}`);
   console.log(`  Routes:   ${discoveredRoutes.length} discovered automatically`);
+  console.log('  Browser:  Styled HTML table');
   console.log(`  Excluded: ${exclude.length}`);
 
   const shouldCreate = await confirm({
@@ -423,6 +431,24 @@ function validateConfig(value: unknown, path: string): asserts value is NgxSeoCo
     typeof discovery.root !== 'string'
   ) {
     throw new Error('sitemap.discoverRoutes.root must be a string.');
+  }
+
+  const stylesheet = config.sitemap.stylesheet;
+  if (
+    stylesheet !== undefined &&
+    typeof stylesheet !== 'boolean' &&
+    (typeof stylesheet !== 'object' || stylesheet === null)
+  ) {
+    throw new Error('sitemap.stylesheet must be a boolean or options object.');
+  }
+
+  if (typeof stylesheet === 'object' && stylesheet !== null) {
+    for (const key of ['href', 'output', 'title'] as const) {
+      const value = stylesheet[key];
+      if (value !== undefined && (typeof value !== 'string' || !value.trim())) {
+        throw new Error(`sitemap.stylesheet.${key} must be a non-empty string.`);
+      }
+    }
   }
 }
 

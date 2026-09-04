@@ -22,8 +22,18 @@ export type SitemapRouteInput = string | SitemapRoute;
 export interface SitemapOptions {
   routes?: SitemapRouteInput[];
   discoverRoutes?: boolean | AngularRouteDiscoveryOptions;
+  stylesheet?: boolean | SitemapStylesheetOptions;
   exclude?: string[];
   output?: string;
+}
+
+export interface SitemapStylesheetOptions {
+  /** Browser-facing URL in the XML instruction. Defaults to `sitemap.xsl`. */
+  href?: string;
+  /** File destination. Defaults to the sitemap output with an `.xsl` extension. */
+  output?: string;
+  /** Heading and document title shown by browsers. */
+  title?: string;
 }
 
 export interface AngularRouteDiscoveryOptions {
@@ -40,13 +50,16 @@ export interface GenerateSitemapOptions {
   siteUrl: string;
   routes: SitemapRouteInput[];
   exclude?: string[];
+  stylesheet?: string;
 }
 
-export interface WriteSitemapOptions extends GenerateSitemapOptions {
+export interface WriteSitemapOptions extends Omit<GenerateSitemapOptions, 'stylesheet'> {
   output: string;
+  stylesheet?: boolean | SitemapStylesheetOptions;
 }
 
 export interface WriteSitemapResult {
   output: string;
   urlCount: number;
+  stylesheetOutput?: string;
 }

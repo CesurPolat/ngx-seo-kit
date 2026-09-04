@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import {
   CHANGE_FREQUENCIES,
   type GenerateSitemapOptions,
@@ -48,7 +48,58 @@ export function generateSitemap(options: GenerateSitemapOptions): string {
     return lines.join('\n');
   });
 
-  return [XML_HEADER, URLSET_OPEN, ...entries, URLSET_CLOSE, ''].join('\n');
+  const stylesheet = options.stylesheet
+    ? `<?xml-stylesheet type="text/xsl" href="${escapeXml(options.stylesheet)}"?>`
+    : undefined;
+  return [XML_HEADER, stylesheet, URLSET_OPEN, ...entries, URLSET_CLOSE, '']
+    .filter((line) => line !== undefined)
+    .join('\n');
+}
+
+export function generateSitemapStylesheet(title = 'XML Sitemap'): string {
+  const safeTitle = escapeXml(title.trim() || 'XML Sitemap');
+  return `${XML_HEADER}
+<xsl:stylesheet version="1.0"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns:sm="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <xsl:output method="html" encoding="UTF-8" indent="yes"/>
+  <xsl:template match="/">
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>${safeTitle}</title>
+        <style>
+          body{margin:0;background:#f8fafc;color:#0f172a;font:16px/1.5 system-ui,sans-serif}
+          main{max-width:1100px;margin:auto;padding:48px 24px}h1{margin:0 0 8px;font-size:2rem}
+          p{color:#475569;margin:0 0 28px}table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px #0002}
+          th,td{padding:14px 16px;text-align:left;border-bottom:1px solid #e2e8f0}th{background:#f1f5f9;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}
+          a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}tr:last-child td{border:0}@media(max-width:700px){.optional{display:none}}
+        </style>
+      </head>
+      <body>
+        <main>
+          <h1>${safeTitle}</h1>
+          <p><xsl:value-of select="count(sm:urlset/sm:url)"/> URLs</p>
+          <table>
+            <thead><tr><th>URL</th><th>Last modified</th><th class="optional">Frequency</th><th class="optional">Priority</th></tr></thead>
+            <tbody>
+              <xsl:for-each select="sm:urlset/sm:url">
+                <tr>
+                  <td><a href="{sm:loc}"><xsl:value-of select="sm:loc"/></a></td>
+                  <td><xsl:value-of select="sm:lastmod"/></td>
+                  <td class="optional"><xsl:value-of select="sm:changefreq"/></td>
+                  <td class="optional"><xsl:value-of select="sm:priority"/></td>
+                </tr>
+              </xsl:for-each>
+            </tbody>
+          </table>
+        </main>
+      </body>
+    </html>
+  </xsl:template>
+</xsl:stylesheet>
+`;
 }
 
 export async function writeSitemap(options: WriteSitemapOptions): Promise<WriteSitemapResult> {
@@ -57,15 +108,43 @@ export async function writeSitemap(options: WriteSitemapOptions): Promise<WriteS
   }
 
   const output = resolve(options.output);
-  const xml = generateSitemap(options);
+  const stylesheetOptions =
+    typeof options.stylesheet === 'object' ? options.stylesheet : {};
+  const stylesheetOutput = options.stylesheet
+    ? resolve(stylesheetOptions.output ?? defaultStylesheetOutput(output))
+    : undefined;
+  const stylesheetHref = stylesheetOutput
+    ? (stylesheetOptions.href ?? basename(stylesheetOutput))
+    : undefined;
+  const xml = generateSitemap({
+    siteUrl: options.siteUrl,
+    routes: options.routes,
+    ...(options.exclude ? { exclude: options.exclude } : {}),
+    ...(stylesheetHref ? { stylesheet: stylesheetHref } : {}),
+  });
 
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, xml, 'utf8');
+  if (stylesheetOutput) {
+    await mkdir(dirname(stylesheetOutput), { recursive: true });
+    await writeFile(
+      stylesheetOutput,
+      generateSitemapStylesheet(stylesheetOptions.title),
+      'utf8',
+    );
+  }
 
   return {
     output,
     urlCount: countUrls(xml),
+    ...(stylesheetOutput ? { stylesheetOutput } : {}),
   };
+}
+
+function defaultStylesheetOutput(sitemapOutput: string): string {
+  return sitemapOutput.toLowerCase().endsWith('.xml')
+    ? `${sitemapOutput.slice(0, -4)}.xsl`
+    : `${sitemapOutput}.xsl`;
 }
 
 function normalizeSiteUrl(value: string): string {

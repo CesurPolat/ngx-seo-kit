@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
-import { discoverAngularRoutes, generateSitemap, writeSitemap } from '../src/index.js';
+import {
+  discoverAngularRoutes,
+  generateSitemap,
+  generateSitemapStylesheet,
+  writeSitemap,
+} from '../src/index.js';
 
 test('generates a valid sitemap with optional metadata', () => {
   const xml = generateSitemap({
@@ -88,6 +93,40 @@ test('writes sitemap and creates missing output directories', async () => {
   assert.match(await readFile(output, 'utf8'), /<urlset/);
 });
 
+test('adds an XSL instruction and writes a browser-friendly stylesheet', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-xsl-'));
+  const output = join(directory, 'public', 'sitemap.xml');
+
+  const result = await writeSitemap({
+    siteUrl: 'https://example.com',
+    routes: [{ path: '/', lastmod: '2026-09-04', priority: 1 }],
+    output,
+    stylesheet: { href: '/sitemap.xsl', title: 'Example Sitemap' },
+  });
+
+  assert.equal(result.stylesheetOutput, join(directory, 'public', 'sitemap.xsl'));
+  assert.match(
+    await readFile(output, 'utf8'),
+    /<\?xml-stylesheet type="text\/xsl" href="\/sitemap\.xsl"\?>/,
+  );
+  const stylesheet = await readFile(result.stylesheetOutput, 'utf8');
+  assert.match(stylesheet, /<title>Example Sitemap<\/title>/);
+  assert.match(stylesheet, /select="sm:urlset\/sm:url"/);
+  assert.match(stylesheet, /<th>Last modified<\/th>/);
+});
+
+test('escapes stylesheet titles and URLs', () => {
+  assert.match(generateSitemapStylesheet('A & B'), /<title>A &amp; B<\/title>/);
+  assert.match(
+    generateSitemap({
+      siteUrl: 'https://example.com',
+      routes: ['/'],
+      stylesheet: '/sitemap.xsl?theme=dark&compact=true',
+    }),
+    /theme=dark&amp;compact=true/,
+  );
+});
+
 test('discovers standalone, nested and lazy Angular routes', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-routes-'));
   const app = join(directory, 'src', 'app');
@@ -158,7 +197,7 @@ test('CLI generates a sitemap from discovered routes without configured routes',
   );
   await writeFile(
     join(directory, 'seo.config.mjs'),
-    `export default { siteUrl: 'https://example.com', sitemap: { output: 'dist/sitemap.xml' } };`,
+    `export default { siteUrl: 'https://example.com', sitemap: { output: 'dist/sitemap.xml', stylesheet: true } };`,
   );
 
   const result = spawnSync(process.execPath, [cli, 'generate'], {
@@ -170,4 +209,6 @@ test('CLI generates a sitemap from discovered routes without configured routes',
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /2 URLs, 2 discovered/);
   assert.match(await readFile(join(directory, 'dist', 'sitemap.xml'), 'utf8'), /\/about/);
+  assert.match(result.stdout, /Sitemap stylesheet generated/);
+  assert.match(await readFile(join(directory, 'dist', 'sitemap.xsl'), 'utf8'), /<table>/);
 });

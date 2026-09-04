@@ -157,6 +157,7 @@ export default {
   sitemap: {
     output: 'dist/my-app/browser/sitemap.xml',
     discoverRoutes: true,
+    stylesheet: true,
     routes: [
       '/',
       '/about',
@@ -183,6 +184,9 @@ Optional sitemap fields:
 - `routes`: Extra route strings or detailed route objects. These are merged with
   automatically discovered routes.
 - `discoverRoutes`: `true` (default), `false`, or `{ root: 'custom/src' }`.
+- `stylesheet`: `true` to generate a sibling `sitemap.xsl`, or an object with
+  optional `href`, `output`, and `title` fields. Browsers render the XML as an
+  HTML table while crawlers continue to receive standard sitemap XML.
 - `exclude`: Routes omitted from the generated sitemap.
 - `output`: Destination for the generated XML file.
 

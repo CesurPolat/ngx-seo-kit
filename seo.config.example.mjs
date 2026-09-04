@@ -4,6 +4,10 @@ export default {
   sitemap: {
     output: 'dist/browser/sitemap.xml',
     discoverRoutes: true,
+    stylesheet: {
+      href: '/sitemap.xsl',
+      title: 'Example Sitemap',
+    },
     routes: [
       { path: '/projects/featured', changefreq: 'weekly', priority: 0.9 },
     ],
