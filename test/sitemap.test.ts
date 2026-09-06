@@ -242,7 +242,7 @@ test('discovers routes imported by the standard Angular app config', async () =>
   assert.deepEqual(await discoverAngularRoutes(directory), ['/', '/about']);
 });
 
-test('CLI exposes init and generate commands in help', () => {
+test('CLI exposes init, generate and version commands in help', () => {
   const cli = resolve('dist/src/cli.js');
   const result = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8' });
 
@@ -250,6 +250,15 @@ test('CLI exposes init and generate commands in help', () => {
   assert.match(result.stdout, /\(none\)\s+Open the interactive main menu/);
   assert.match(result.stdout, /ngx-seo-kit init/);
   assert.match(result.stdout, /generate\s+Generate sitemap/);
+  assert.match(result.stdout, /version\s+Print the installed ngx-seo-kit version/);
+});
+
+test('CLI prints its version without loading a config', () => {
+  const cli = resolve('dist/src/cli.js');
+  const result = spawnSync(process.execPath, [cli, 'version'], { encoding: 'utf8' });
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout.trim(), '0.1.11');
 });
 
 test('CLI does not open setup prompts in non-interactive environments', async () => {

@@ -25,7 +25,7 @@ const DEFAULT_CONFIG_FILES = [
 ] as const;
 
 interface CliOptions {
-  command?: 'generate' | 'init';
+  command?: 'generate' | 'init' | 'version';
   config?: string;
   output?: string;
   help: boolean;
@@ -38,6 +38,11 @@ async function main(): Promise<void> {
 
   if (options.help) {
     printHelp();
+    return;
+  }
+
+  if (options.command === 'version') {
+    console.log(await readPackageVersion());
     return;
   }
 
@@ -140,12 +145,22 @@ function parseArguments(args: string[]): CliOptions {
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
 
-    if (argument === 'generate' || argument === 'init') {
+    if (argument === 'generate' || argument === 'init' || argument === 'version') {
       if (commandSeen) {
         throw new Error('Only one command can be specified.');
       }
 
       options.command = argument;
+      commandSeen = true;
+      continue;
+    }
+
+    if (argument === '--version' || argument === '-v') {
+      if (commandSeen) {
+        throw new Error('Only one command can be specified.');
+      }
+
+      options.command = 'version';
       commandSeen = true;
       continue;
     }
@@ -632,20 +647,24 @@ Usage:
   npx ngx-seo-kit [options]
   npx ngx-seo-kit generate [options]
   npx ngx-seo-kit init [options]
+  npx ngx-seo-kit version
 
 Commands:
   (none)               Open the interactive main menu.
   generate             Generate sitemap.xml using the current config.
   init                 Create a config through the guided setup.
+  version              Print the installed ngx-seo-kit version.
 
 Options:
   -c, --config <path>  Config file (default: seo.config.ts)
   -o, --output <path>  Override the sitemap output path
   -h, --help           Show this help
+  -v, --version        Print the installed ngx-seo-kit version
 
 Examples:
   npx ngx-seo-kit
   npx ngx-seo-kit init
+  npx ngx-seo-kit version
   npx ngx-seo-kit generate
   npx ngx-seo-kit generate --config config/seo.production.ts
   npx ngx-seo-kit generate --output public/sitemap.xml
