@@ -4,11 +4,12 @@ import confirm from '@inquirer/confirm';
 import input from '@inquirer/input';
 import select from '@inquirer/select';
 import { spawn } from 'node:child_process';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { dirname, extname, resolve } from 'node:path';
+import { basename, dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { tsImport } from 'tsx/esm/api';
+import { register } from 'tsx/esm/api';
 import { generateSitemap, writeSitemap } from './sitemap.js';
 import { discoverAngularRoutes, discoverRoutes } from './route-discovery.js';
 import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from './site-url.js';
@@ -518,13 +519,71 @@ async function loadConfig(path: string): Promise<unknown> {
   try {
     const extension = extname(path);
     const url = pathToFileURL(path).href;
-    const module = (extension === '.ts' || extension === '.mts' || extension === '.cts'
-      ? await tsImport(url, import.meta.url)
-      : await import(url)) as { default?: unknown };
-    return module.default;
+    let module: { default?: unknown };
+
+    if (extension === '.ts' || extension === '.mts' || extension === '.cts') {
+      // tsx scopes imports by appending a namespace query to every loaded
+      // module. Some Windows Node versions can treat that query as part of a
+      // CommonJS package entry's filename; the targeted fallback below retries
+      // only that case as an ESM config.
+      const unregister = register();
+      try {
+        try {
+          module = (await import(url)) as { default?: unknown };
+        } catch (error) {
+          if (!isNamespacedCommonJsImportError(error) || extension !== '.ts') {
+            throw error;
+          }
+
+          // Older Node releases on Windows do not strip tsx's namespace query
+          // before loading a CommonJS dependency. Loading an otherwise identical
+          // temporary .mts file forces the config (and its package imports) down
+          // the ESM path, where file URL queries are supported.
+          module = await importTypeScriptConfigAsModule(path);
+        }
+      } finally {
+        await unregister();
+      }
+    } else {
+      module = (await import(url)) as { default?: unknown };
+    }
+
+    const defaultExport = module.default;
+    if (
+      defaultExport &&
+      typeof defaultExport === 'object' &&
+      '__esModule' in defaultExport &&
+      'default' in defaultExport
+    ) {
+      return (defaultExport as { default: unknown }).default;
+    }
+
+    return defaultExport;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Could not load config at "${path}": ${message}`);
+  }
+}
+
+function isNamespacedCommonJsImportError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /(?:\?|%3F)namespace(?:=|%3D)/i.test(error.message) &&
+    /Cannot find module/i.test(error.message)
+  );
+}
+
+async function importTypeScriptConfigAsModule(path: string): Promise<{ default?: unknown }> {
+  const temporaryPath = resolve(
+    dirname(path),
+    `.${basename(path)}.ngx-seo-kit-${randomUUID()}.mts`,
+  );
+
+  await writeFile(temporaryPath, await readFile(path, 'utf8'));
+  try {
+    return (await import(pathToFileURL(temporaryPath).href)) as { default?: unknown };
+  } finally {
+    await rm(temporaryPath, { force: true });
   }
 }
 
