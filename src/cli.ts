@@ -9,6 +9,7 @@ import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { register as registerCommonJs } from 'tsx/cjs/api';
 import { register } from 'tsx/esm/api';
 import { generateSitemap, writeSitemap } from './sitemap.js';
 import { discoverAngularRoutes, discoverRoutes } from './route-discovery.js';
@@ -542,6 +543,7 @@ async function loadConfig(path: string): Promise<unknown> {
       // CommonJS package entry's filename; the targeted fallback below retries
       // only that case as an ESM config.
       const unregister = register();
+      const unregisterCommonJs = registerCommonJs();
       try {
         try {
           module = (await import(url)) as { default?: unknown };
@@ -557,6 +559,7 @@ async function loadConfig(path: string): Promise<unknown> {
           module = await importTypeScriptConfigAsModule(path);
         }
       } finally {
+        unregisterCommonJs();
         await unregister();
       }
     } else {

@@ -316,10 +316,16 @@ test('CLI loads a TypeScript config with an imported routes variable', async () 
   await mkdir(testTempRoot, { recursive: true });
   const directory = await mkdtemp(join(testTempRoot, 'cli-ts-config-'));
   await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'commonjs' }));
-  await mkdir(join(directory, 'src', 'app'), { recursive: true });
+  await mkdir(join(directory, 'src', 'app', 'data'), { recursive: true });
+  await writeFile(
+    join(directory, 'src', 'app', 'data', 'projects.ts'),
+    `export const projects = [];`,
+  );
   await writeFile(
     join(directory, 'src', 'app', 'app.routes.ts'),
-    `export const routes = [
+    `import { projects } from './data/projects';
+     void projects;
+     export const routes = [
        { path: '', component: {} },
        { path: 'about', component: {} },
        { path: 'users/:id', component: {} }
