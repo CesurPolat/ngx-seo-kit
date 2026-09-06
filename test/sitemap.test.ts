@@ -253,12 +253,15 @@ test('CLI exposes init, generate and version commands in help', () => {
   assert.match(result.stdout, /version\s+Print the installed ngx-seo-kit version/);
 });
 
-test('CLI prints its version without loading a config', () => {
+test('CLI prints its version without loading a config', async () => {
   const cli = resolve('dist/src/cli.js');
   const result = spawnSync(process.execPath, [cli, 'version'], { encoding: 'utf8' });
+  const packageJson = JSON.parse(await readFile(resolve('package.json'), 'utf8')) as {
+    version: string;
+  };
 
   assert.equal(result.status, 0);
-  assert.equal(result.stdout.trim(), '0.1.11');
+  assert.equal(result.stdout.trim(), packageJson.version);
 });
 
 test('CLI does not open setup prompts in non-interactive environments', async () => {
