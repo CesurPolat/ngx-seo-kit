@@ -1,6 +1,6 @@
 {
   "name": "ngx-seo-kit",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Build-time SEO tools for Angular applications.",
   "repository": {
     "type": "git",
