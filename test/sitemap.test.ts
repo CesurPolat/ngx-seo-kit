@@ -12,6 +12,7 @@ import {
   generateSitemap,
   generateSitemapStylesheet,
   routesToPaths,
+  routesToPathsAsync,
   writeSitemap,
 } from '../src/index.js';
 import { normalizeSiteUrl, withDefaultProtocol } from '../src/site-url.js';
@@ -215,6 +216,27 @@ test('converts an in-memory Angular routes array to sitemap paths', () => {
     '/account',
     '/account/settings',
   ]);
+});
+
+test('resolves lazy in-memory route arrays to sitemap paths', async () => {
+  const routes = [
+    { path: '', component: {} },
+    {
+      path: 'account',
+      loadChildren: async () => ({
+        routes: [
+          { path: 'settings', component: {} },
+          { path: 'users/:id', component: {} },
+        ],
+      }),
+    },
+    {
+      path: 'shop',
+      loadChildren: async () => ({ default: [{ path: '', component: {} }] }),
+    },
+  ];
+
+  assert.deepEqual(await routesToPathsAsync(routes), ['/', '/account/settings', '/shop']);
 });
 
 test('discovers routes imported by the standard Angular app config', async () => {

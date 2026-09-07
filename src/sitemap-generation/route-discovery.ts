@@ -18,6 +18,18 @@ export function routesToPaths(routes: readonly DiscoverableRoute[]): string[] {
   return sortRoutes(discovered);
 }
 
+/**
+ * Resolves an in-memory Angular `Routes` array, including lazy route arrays
+ * returned by `loadChildren`, to concrete sitemap paths.
+ */
+export async function routesToPathsAsync(
+  routes: readonly DiscoverableRoute[],
+): Promise<string[]> {
+  const discovered = new Set<string>();
+  await collectRouteValuesAsync(routes, '', discovered, new Set());
+  return sortRoutes(discovered);
+}
+
 /** Discovers concrete Angular Router URLs starting from a route source file. */
 export async function discoverRoutes(
   routeFile: string,
@@ -129,6 +141,54 @@ function collectRouteValues(
       collectRouteValues(route.children, fullPath, output);
     }
   }
+}
+
+async function collectRouteValuesAsync(
+  routes: readonly DiscoverableRoute[],
+  parentPath: string,
+  output: Set<string>,
+  loading: Set<() => unknown>,
+): Promise<void> {
+  for (const route of routes) {
+    if (typeof route.path !== 'string') continue;
+
+    const fullPath = joinRoutePath(parentPath, route.path);
+    const isConcrete =
+      !Object.hasOwn(route, 'redirectTo') &&
+      !fullPath.split('/').some((segment) => segment === '**' || segment.startsWith(':'));
+    const hasPageTarget =
+      Object.hasOwn(route, 'component') || Object.hasOwn(route, 'loadComponent');
+
+    if (isConcrete && hasPageTarget) output.add(fullPath);
+    if (Array.isArray(route.children)) {
+      await collectRouteValuesAsync(route.children, fullPath, output, loading);
+    }
+
+    const loadChildren = route.loadChildren;
+    if (typeof loadChildren === 'function') {
+      const loader = loadChildren as () => unknown;
+      if (loading.has(loader)) continue;
+
+      loading.add(loader);
+      try {
+        const childRoutes = extractRoutes(await loader());
+        if (childRoutes) {
+          await collectRouteValuesAsync(childRoutes, fullPath, output, loading);
+        }
+      } finally {
+        loading.delete(loader);
+      }
+    }
+  }
+}
+
+function extractRoutes(value: unknown): readonly DiscoverableRoute[] | undefined {
+  if (Array.isArray(value)) return value as readonly DiscoverableRoute[];
+  if (!value || typeof value !== 'object') return undefined;
+
+  const module = value as { default?: unknown; routes?: unknown };
+  if (Array.isArray(module.default)) return module.default as readonly DiscoverableRoute[];
+  return Array.isArray(module.routes) ? (module.routes as readonly DiscoverableRoute[]) : undefined;
 }
 
 async function findTypeScriptFiles(directory: string): Promise<string[]> {

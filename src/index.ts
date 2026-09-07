@@ -3,6 +3,7 @@ export {
   discoverAngularRoutes,
   discoverRoutes,
   routesToPaths,
+  routesToPathsAsync,
 } from './sitemap-generation/route-discovery.js';
 export { generateSitemap, generateSitemapStylesheet, writeSitemap } from './sitemap-generation/index.js';
 export { CHANGE_FREQUENCIES } from './sitemap-generation/types.js';
