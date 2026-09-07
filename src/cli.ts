@@ -635,9 +635,6 @@ async function loadConfig(path: string): Promise<unknown> {
             throw error;
           }
 
-          // Loading an otherwise identical temporary .mts file forces the
-          // config (and its package imports) down the ESM path, where file URL
-          // queries and top-level await are supported.
           module = await importTypeScriptConfigAsModule(path);
         }
       } finally {

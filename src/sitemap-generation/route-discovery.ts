@@ -283,6 +283,11 @@ function collectRoutes(
   visiting.add(visitKey);
 
   for (const element of array.elements) {
+    if (ts.isSpreadElement(element)) {
+      collectRoutes(file, element.expression, parentPath, files, output, visiting);
+      continue;
+    }
+
     if (!ts.isObjectLiteralExpression(element)) continue;
     const path = stringProperty(element, 'path');
     if (path === undefined) continue;

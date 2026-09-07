@@ -160,11 +160,13 @@ test('discovers standalone, nested and lazy Angular routes', async () => {
      export const routes: Routes = [
        { path: '', loadComponent: () => import('./home') },
        { path: 'about', component: AboutPage },
+       ...sharedRoutes,
        { path: 'account', loadChildren: () => import('./account/account.routes').then(m => m.ACCOUNT_ROUTES) },
        { path: 'legacy', redirectTo: 'about' },
        { path: 'users/:id', component: UserPage },
        { path: '**', component: NotFoundPage }
      ];
+     const sharedRoutes = [{ path: 'contact', component: ContactPage }];
      provideRouter(routes);`,
   );
   await writeFile(
@@ -183,6 +185,7 @@ test('discovers standalone, nested and lazy Angular routes', async () => {
     '/account/settings',
     '/account/team',
     '/account/team/new',
+    '/contact',
   ]);
   assert.deepEqual(await discoverRoutes('src/app/app.routes.ts', directory), [
     '/',
@@ -191,6 +194,7 @@ test('discovers standalone, nested and lazy Angular routes', async () => {
     '/account/settings',
     '/account/team',
     '/account/team/new',
+    '/contact',
   ]);
 });
 
