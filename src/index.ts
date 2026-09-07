@@ -3,16 +3,16 @@ export {
   discoverAngularRoutes,
   discoverRoutes,
   routesToPaths,
-} from './route-discovery.js';
-export { generateSitemap, generateSitemapStylesheet, writeSitemap } from './sitemap/index.js';
-export { CHANGE_FREQUENCIES } from './sitemap/types.js';
+} from './sitemap-generation/route-discovery.js';
+export { generateSitemap, generateSitemapStylesheet, writeSitemap } from './sitemap-generation/index.js';
+export { CHANGE_FREQUENCIES } from './sitemap-generation/types.js';
 export type {
-  AngularRouteDiscoveryOptions,
-  DiscoverableRoute,
   NgxSeoConfig,
 } from './types.js';
 export type {
+  AngularRouteDiscoveryOptions,
   ChangeFrequency,
+  DiscoverableRoute,
   GenerateSitemapOptions,
   SitemapOptions,
   SitemapRoute,
@@ -20,4 +20,4 @@ export type {
   SitemapStylesheetOptions,
   WriteSitemapOptions,
   WriteSitemapResult,
-} from './sitemap/types.js';
+} from './sitemap-generation/types.js';
