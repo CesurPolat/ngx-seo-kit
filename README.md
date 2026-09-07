@@ -197,6 +197,10 @@ always, hourly, daily, weekly, monthly, yearly, never
 
 ## CLI options
 
+In interactive terminals, the CLI checks npm for a newer `ngx-seo-kit` release
+and prints the update command when one is available. Checks are skipped in CI;
+set `NGX_SEO_KIT_DISABLE_UPDATE_CHECK=1` to opt out elsewhere.
+
 See the [CLI guide](./docs/cli.md) for setup, configuration precedence, CI usage,
 and troubleshooting details.
 

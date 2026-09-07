@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
-import { normalizeSiteUrl } from './site-url.js';
+import { normalizeSiteUrl } from '../site-url.js';
 import {
   CHANGE_FREQUENCIES,
   type GenerateSitemapOptions,

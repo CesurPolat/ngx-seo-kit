@@ -11,7 +11,7 @@ import { basename, dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { register as registerCommonJs } from 'tsx/cjs/api';
 import { register } from 'tsx/esm/api';
-import { generateSitemap, writeSitemap } from './sitemap.js';
+import { generateSitemap, writeSitemap } from './sitemap/index.js';
 import { discoverAngularRoutes, discoverRoutes } from './route-discovery.js';
 import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from './site-url.js';
 import type { NgxSeoConfig } from './types.js';
@@ -48,6 +48,7 @@ async function main(): Promise<void> {
   }
 
   await offerLocalInstallation();
+  await notifyPackageUpdate();
 
   const requestedConfigPath = options.config ? resolve(options.config) : undefined;
   let command = options.command;
@@ -264,6 +265,87 @@ async function offerLocalInstallation(): Promise<void> {
   console.log(`\nInstalling ngx-seo-kit@${version} as a dev dependency...\n`);
   await installDevDependency(`ngx-seo-kit@${version}`);
   console.log('\n✓ ngx-seo-kit was added to devDependencies.');
+}
+
+async function notifyPackageUpdate(): Promise<void> {
+  if (!shouldCheckForUpdates()) return;
+
+  try {
+    const currentVersion = await readPackageVersion();
+    const response = await fetch('https://registry.npmjs.org/ngx-seo-kit/latest', {
+      headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(1_500),
+    });
+
+    if (!response.ok) return;
+
+    const latest = (await response.json()) as { version?: unknown };
+    if (typeof latest.version === 'string' && isNewerVersion(latest.version, currentVersion)) {
+      console.warn(
+        `\nUpdate available: ngx-seo-kit ${currentVersion} → ${latest.version}\n` +
+          'Run: npm install -D ngx-seo-kit@latest\n',
+      );
+    }
+  } catch {
+    // A version check must never block sitemap generation.
+  }
+}
+
+function shouldCheckForUpdates(): boolean {
+  return (
+    isInteractiveTerminal() &&
+    process.env.NO_UPDATE_NOTIFIER !== '1' &&
+    process.env.NGX_SEO_KIT_DISABLE_UPDATE_CHECK !== '1'
+  );
+}
+
+function isNewerVersion(candidate: string, current: string): boolean {
+  const candidateParts = parseVersion(candidate);
+  const currentParts = parseVersion(current);
+  if (!candidateParts || !currentParts) return false;
+
+  for (const index of [0, 1, 2] as const) {
+    const difference = candidateParts.core[index] - currentParts.core[index];
+    if (difference !== 0) return difference > 0;
+  }
+
+  if (candidateParts.prerelease.length === 0 || currentParts.prerelease.length === 0) {
+    return candidateParts.prerelease.length === 0 && currentParts.prerelease.length > 0;
+  }
+
+  const length = Math.max(candidateParts.prerelease.length, currentParts.prerelease.length);
+  for (let index = 0; index < length; index += 1) {
+    const candidateIdentifier = candidateParts.prerelease[index];
+    const currentIdentifier = currentParts.prerelease[index];
+    if (candidateIdentifier === undefined) return false;
+    if (currentIdentifier === undefined) return true;
+    if (candidateIdentifier === currentIdentifier) continue;
+
+    const candidateNumber = Number(candidateIdentifier);
+    const currentNumber = Number(currentIdentifier);
+    if (Number.isInteger(candidateNumber) && Number.isInteger(currentNumber)) {
+      return candidateNumber > currentNumber;
+    }
+    if (Number.isInteger(candidateNumber)) return false;
+    if (Number.isInteger(currentNumber)) return true;
+    return candidateIdentifier > currentIdentifier;
+  }
+
+  return false;
+}
+
+function parseVersion(
+  version: string,
+): { core: [number, number, number]; prerelease: string[] } | undefined {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(
+    version,
+  );
+  if (!match) return undefined;
+
+  return {
+    core: [Number(match[1]), Number(match[2]), Number(match[3])],
+    prerelease: match[4]?.split('.') ?? [],
+  };
 }
 
 function isPackageAvailableFromProject(): boolean {
