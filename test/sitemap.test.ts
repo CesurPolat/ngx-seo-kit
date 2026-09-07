@@ -336,7 +336,7 @@ test('CLI generates a sitemap from routes discovered in the config', async () =>
 
 test('CLI loads a TypeScript config with an imported routes variable', async () => {
   const cli = resolve('dist/src/cli.js');
-  const commonJsPackageEntry = resolve('dist/cjs/index.js').replaceAll('\\', '/');
+  const packageEntry = pathToFileURL(resolve('dist/src/index.js')).href;
   const testTempRoot = resolve('test', '.tmp');
   await mkdir(testTempRoot, { recursive: true });
   const directory = await mkdtemp(join(testTempRoot, 'cli-ts-config-'));
@@ -358,12 +358,12 @@ test('CLI loads a TypeScript config with an imported routes variable', async () 
   );
   await writeFile(
     join(directory, 'seo.config.ts'),
-    `import { defineSeoConfig, routesToPaths } from ${JSON.stringify(commonJsPackageEntry)};
+    `import { defineSeoConfig, routesToPathsAsync } from ${JSON.stringify(packageEntry)};
      import { routes } from './src/app/app.routes.ts';
      export default defineSeoConfig({
        siteUrl: 'https://example.com',
        sitemap: {
-         routes: routesToPaths(routes),
+         routes: await routesToPathsAsync(routes),
          output: 'public/sitemap.xml'
        }
      });`,

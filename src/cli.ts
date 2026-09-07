@@ -622,22 +622,22 @@ async function loadConfig(path: string): Promise<unknown> {
     if (extension === '.ts' || extension === '.mts' || extension === '.cts') {
       // tsx scopes imports by appending a namespace query to every loaded
       // module. Some Windows Node versions can treat that query as part of a
-      // CommonJS package entry's filename; the targeted fallback below retries
-      // only that case as an ESM config.
+      // CommonJS package entry's filename. A `.ts` config in a CommonJS
+      // project also cannot use top-level await. The fallback retries either
+      // case as an ESM config.
       const unregister = register();
       const unregisterCommonJs = registerCommonJs();
       try {
         try {
           module = (await import(url)) as { default?: unknown };
         } catch (error) {
-          if (!isNamespacedCommonJsImportError(error) || extension !== '.ts') {
+          if (!shouldRetryTypeScriptConfigAsModule(error) || extension !== '.ts') {
             throw error;
           }
 
-          // Older Node releases on Windows do not strip tsx's namespace query
-          // before loading a CommonJS dependency. Loading an otherwise identical
-          // temporary .mts file forces the config (and its package imports) down
-          // the ESM path, where file URL queries are supported.
+          // Loading an otherwise identical temporary .mts file forces the
+          // config (and its package imports) down the ESM path, where file URL
+          // queries and top-level await are supported.
           module = await importTypeScriptConfigAsModule(path);
         }
       } finally {
@@ -665,11 +665,15 @@ async function loadConfig(path: string): Promise<unknown> {
   }
 }
 
-function isNamespacedCommonJsImportError(error: unknown): boolean {
+function shouldRetryTypeScriptConfigAsModule(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
   return (
-    error instanceof Error &&
-    /(?:\?|%3F)namespace(?:=|%3D)/i.test(error.message) &&
-    /Cannot find module/i.test(error.message)
+    (/(?:\?|%3F)namespace(?:=|%3D)/i.test(error.message) &&
+      /Cannot find module/i.test(error.message)) ||
+    /Top-level await is currently not supported with the "cjs" output format/i.test(
+      error.message,
+    )
   );
 }
 
