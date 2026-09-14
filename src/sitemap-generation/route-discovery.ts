@@ -1,3 +1,5 @@
+import type { AngularRouteDiscoveryOptions, DiscoverableRoute } from './types.js';
+
 /**
  * Angular route discovery strategy
  *
@@ -239,3 +241,34 @@
  * })
  * export class FeatureRoutingModule {}
  */
+
+const ROUTE_DISCOVERY_NOT_IMPLEMENTED =
+  'Angular route discovery is temporarily unavailable while its static analyzer is being rebuilt.';
+
+/** Converts an in-memory Angular `Routes` array to concrete sitemap paths. */
+export function routesToPaths(_routes: readonly DiscoverableRoute[]): string[] {
+  throw new Error(ROUTE_DISCOVERY_NOT_IMPLEMENTED);
+}
+
+/** Resolves an in-memory Angular `Routes` array, including lazy route arrays. */
+export async function routesToPathsAsync(
+  _routes: readonly DiscoverableRoute[],
+): Promise<string[]> {
+  throw new Error(ROUTE_DISCOVERY_NOT_IMPLEMENTED);
+}
+
+/** Discovers concrete Angular Router URLs starting from a route source file. */
+export async function discoverRoutes(
+  _routeFile: string,
+  _projectDirectory = process.cwd(),
+): Promise<string[]> {
+  throw new Error(ROUTE_DISCOVERY_NOT_IMPLEMENTED);
+}
+
+/** Discovers static Angular Router URLs starting at provideRouter/forRoot. */
+export async function discoverAngularRoutes(
+  _projectDirectory = process.cwd(),
+  _options: AngularRouteDiscoveryOptions = {},
+): Promise<string[]> {
+  throw new Error(ROUTE_DISCOVERY_NOT_IMPLEMENTED);
+}
