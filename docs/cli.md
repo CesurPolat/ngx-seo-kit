@@ -48,6 +48,7 @@ npx ngx-seo-kit
 Use the arrow keys to choose one of these actions:
 
 - **Generate sitemap** reads the current configuration and writes the sitemap.
+- **Set up Google Analytics** installs a Google tag in the Angular index file.
 - **Create configuration** starts the guided setup. This option is disabled when
   a configuration already exists.
 - **Exit** closes the CLI without making changes.
@@ -126,12 +127,41 @@ npx ngx-seo-kit init --config config/seo.config.ts
 `init` only works in an interactive terminal. If the target file already exists,
 the command stops without modifying it.
 
+### `analytics`
+
+Install Google Analytics in `src/index.html` through an interactive prompt:
+
+```bash
+npx ngx-seo-kit analytics
+```
+
+Pass the measurement ID explicitly in non-interactive environments:
+
+```bash
+npx ngx-seo-kit analytics --tag-id G-XXXXXXXXXX
+```
+
+Use `--index` when the Angular application has a custom location:
+
+```bash
+npx ngx-seo-kit analytics \
+  --tag-id G-XXXXXXXXXX \
+  --index projects/storefront/src/index.html
+```
+
+The command owns the HTML block between its `ngx-seo-kit:google-tag` markers.
+Re-running it does not duplicate the block, and supplying another measurement
+ID updates the owned block. An existing Google tag without those markers is
+never overwritten automatically.
+
 ## Options
 
 | Option | Short form | Description |
 | --- | --- | --- |
 | `--config <path>` | `-c <path>` | Configuration file to read or create with `init` |
 | `--output <path>` | `-o <path>` | Override `sitemap.output` for the current invocation |
+| `--tag-id <id>` | | Google Analytics measurement ID used by `analytics` |
+| `--index <path>` | | Angular index file used by `analytics` (default: `src/index.html`) |
 | `--help` | `-h` | Print help and exit without performing an operation |
 
 Use a custom configuration and output path together:

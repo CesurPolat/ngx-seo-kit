@@ -16,6 +16,7 @@ A type-safe SEO toolkit that generates `sitemap.xml` files for Angular applicati
 - Optional browser-friendly HTML table through an XSL stylesheet
 - Command-line interface and programmatic API
 - Guided interactive CLI setup
+- Guided Google Analytics installation for Angular apps
 
 ## Requirements
 
@@ -231,6 +232,40 @@ When no configuration path is provided, the CLI searches for `seo.config.ts`,
 that order.
 
 A working example is available in [seo.config.example.ts](./seo.config.example.ts).
+
+## Google Analytics setup
+
+Install the Google tag in the default Angular `src/index.html` file:
+
+```bash
+npx ngx-seo-kit analytics
+```
+
+The interactive command asks for the Google Analytics measurement ID, validates
+its `G-...` format, and inserts the tag before `</head>`. For CI or scripts, pass
+the ID directly:
+
+```bash
+npx ngx-seo-kit analytics --tag-id G-XXXXXXXXXX
+```
+
+For an Angular monorepo or a custom index path:
+
+```bash
+npx ngx-seo-kit analytics \
+  --tag-id G-XXXXXXXXXX \
+  --index projects/storefront/src/index.html
+```
+
+Running the command again is safe. It leaves an identical installation alone
+and updates a tag previously installed by `ngx-seo-kit` when the measurement ID
+changes. If an unmanaged Google tag already exists, the command stops instead
+of adding a second tag and potentially recording duplicate events.
+
+For Angular client-side navigation, enable **Page changes based on browser
+history events** in the web stream's Enhanced Measurement settings. Review the
+consent and privacy requirements that apply to the site before deploying
+analytics.
 
 ## Programmatic API
 

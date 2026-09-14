@@ -276,7 +276,27 @@ test('CLI exposes init, generate and version commands in help', () => {
   assert.match(result.stdout, /\(none\)\s+Open the interactive main menu/);
   assert.match(result.stdout, /ngx-seo-kit init/);
   assert.match(result.stdout, /generate\s+Generate sitemap/);
+  assert.match(result.stdout, /analytics\s+Install Google Analytics/);
   assert.match(result.stdout, /version\s+Print the installed ngx-seo-kit version/);
+});
+
+test('analytics CLI installs a tag without requiring an SEO config', async () => {
+  const cli = resolve('dist/src/cli.js');
+  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-analytics-cli-'));
+  await mkdir(join(directory, 'src'), { recursive: true });
+  await writeFile(join(directory, 'src', 'index.html'), '<html><head></head><body></body></html>');
+  const result = spawnSync(
+    process.execPath,
+    [cli, 'analytics', '--tag-id', 'G-ABC123XYZ'],
+    { cwd: directory, encoding: 'utf8', env: { ...process.env, CI: '1' } },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Google Analytics installed: G-ABC123XYZ/);
+  assert.match(
+    await readFile(join(directory, 'src', 'index.html'), 'utf8'),
+    /gtag\('config', 'G-ABC123XYZ'\)/,
+  );
 });
 
 test('CLI prints its version without loading a config', async () => {

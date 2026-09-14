@@ -16,6 +16,7 @@ import { discoverAngularRoutes, discoverRoutes } from './sitemap-generation/rout
 import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from './site-url.js';
 import type { NgxSeoConfig } from './types.js';
 import process from 'node:process';
+import { installGoogleTag, normalizeGoogleTagId } from './analytics/google-tag.js';
 
 const DEFAULT_CONFIG_FILES = [
   'seo.config.ts',
@@ -26,13 +27,15 @@ const DEFAULT_CONFIG_FILES = [
 ] as const;
 
 interface CliOptions {
-  command?: 'generate' | 'init' | 'version';
+  command?: 'generate' | 'init' | 'analytics' | 'version';
   config?: string;
   output?: string;
+  tagId?: string;
+  index?: string;
   help: boolean;
 }
 
-type MenuAction = 'generate' | 'init' | 'help' | 'exit';
+type MenuAction = 'generate' | 'init' | 'analytics' | 'help' | 'exit';
 
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
@@ -69,6 +72,11 @@ async function main(): Promise<void> {
     } else {
       command = 'generate';
     }
+  }
+
+  if (command === 'analytics') {
+    await runAnalyticsSetup(options);
+    return;
   }
 
   let configPath: string;
@@ -147,7 +155,12 @@ function parseArguments(args: string[]): CliOptions {
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
 
-    if (argument === 'generate' || argument === 'init' || argument === 'version') {
+    if (
+      argument === 'generate' ||
+      argument === 'init' ||
+      argument === 'analytics' ||
+      argument === 'version'
+    ) {
       if (commandSeen) {
         throw new Error('Only one command can be specified.');
       }
@@ -179,6 +192,16 @@ function parseArguments(args: string[]): CliOptions {
 
     if (argument === '--output' || argument === '-o') {
       options.output = readOptionValue(args, ++index, argument);
+      continue;
+    }
+
+    if (argument === '--tag-id') {
+      options.tagId = readOptionValue(args, ++index, argument);
+      continue;
+    }
+
+    if (argument === '--index') {
+      options.index = readOptionValue(args, ++index, argument);
       continue;
     }
 
@@ -427,6 +450,12 @@ async function runMainMenu(
             'Create sitemap.xml from your config. Direct command: npx ngx-seo-kit generate',
         },
         {
+          name: 'Set up Google Analytics',
+          value: 'analytics',
+          description:
+            'Install a Google tag in the Angular app. Direct command: npx ngx-seo-kit analytics',
+        },
+        {
           name: 'Create configuration',
           value: 'init',
           description:
@@ -452,6 +481,46 @@ async function runMainMenu(
     }
 
     printHelp();
+  }
+}
+
+async function runAnalyticsSetup(options: CliOptions): Promise<void> {
+  let tagId = options.tagId;
+
+  if (!tagId) {
+    assertInteractiveAnalyticsTerminal();
+    tagId = await input({
+      message: 'Google Analytics measurement ID',
+      validate: (value) => {
+        try {
+          normalizeGoogleTagId(value);
+          return true;
+        } catch (error) {
+          return error instanceof Error ? error.message : 'Enter a valid measurement ID.';
+        }
+      },
+    });
+  }
+
+  const result = await installGoogleTag({
+    tagId,
+    ...(options.index ? { index: options.index } : {}),
+  });
+  const labels = {
+    added: 'installed',
+    updated: 'updated',
+    unchanged: 'already configured',
+  } as const;
+
+  console.log(`\n✓ Google Analytics ${labels[result.action]}: ${result.tagId}`);
+  console.log(`  Index: ${result.index}`);
+}
+
+function assertInteractiveAnalyticsTerminal(): void {
+  if (!isInteractiveTerminal()) {
+    throw new Error(
+      'Google Analytics setup requires --tag-id in CI and non-interactive terminals.',
+    );
   }
 }
 
@@ -727,23 +796,27 @@ function validateConfig(value: unknown, path: string): asserts value is NgxSeoCo
 }
 
 function printHelp(): void {
-  console.log(`ngx-seo-kit sitemap generator
+  console.log(`ngx-seo-kit Angular SEO toolkit
 
 Usage:
   npx ngx-seo-kit [options]
   npx ngx-seo-kit generate [options]
   npx ngx-seo-kit init [options]
+  npx ngx-seo-kit analytics [options]
   npx ngx-seo-kit version
 
 Commands:
   (none)               Open the interactive main menu.
   generate             Generate sitemap.xml using the current config.
   init                 Create a config through the guided setup.
+  analytics            Install Google Analytics in an Angular index file.
   version              Print the installed ngx-seo-kit version.
 
 Options:
   -c, --config <path>  Config file (default: seo.config.ts)
   -o, --output <path>  Override the sitemap output path
+  --tag-id <id>        Google Analytics measurement ID (for example G-XXXXXXXXXX)
+  --index <path>       Angular index file (default: src/index.html)
   -h, --help           Show this help
   -v, --version        Print the installed ngx-seo-kit version
 
@@ -752,6 +825,8 @@ Examples:
   npx ngx-seo-kit init
   npx ngx-seo-kit version
   npx ngx-seo-kit generate
+  npx ngx-seo-kit analytics --tag-id G-XXXXXXXXXX
+  npx ngx-seo-kit analytics --tag-id G-XXXXXXXXXX --index projects/app/src/index.html
   npx ngx-seo-kit generate --config config/seo.production.ts
   npx ngx-seo-kit generate --output public/sitemap.xml
 `);

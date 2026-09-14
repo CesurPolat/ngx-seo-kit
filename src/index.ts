@@ -1,5 +1,14 @@
 export { defineSeoConfig } from './config.js';
 export {
+  generateGoogleTagSnippet,
+  installGoogleTag,
+  normalizeGoogleTagId,
+} from './analytics/google-tag.js';
+export type {
+  InstallGoogleTagOptions,
+  InstallGoogleTagResult,
+} from './analytics/google-tag.js';
+export {
   discoverAngularRoutes,
   discoverRoutes,
   routesToPaths,
