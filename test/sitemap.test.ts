@@ -9,10 +9,12 @@ import { pathToFileURL } from 'node:url';
 import {
   discoverAngularRoutes,
   discoverRoutes,
+  generateRobotsTxt,
   generateSitemap,
   generateSitemapStylesheet,
   routesToPaths,
   routesToPathsAsync,
+  writeRobotsTxt,
   writeSitemap,
 } from '../src/index.js';
 import { normalizeSiteUrl, withDefaultProtocol } from '../src/site-url.js';
@@ -20,10 +22,12 @@ import { normalizeSiteUrl, withDefaultProtocol } from '../src/site-url.js';
 test('package can be loaded from CommonJS configs', () => {
   const packageExports = createRequire(import.meta.url)('ngx-seo-kit') as {
     defineSeoConfig?: unknown;
+    generateRobotsTxt?: unknown;
     routesToPaths?: unknown;
   };
 
   assert.equal(typeof packageExports.defineSeoConfig, 'function');
+  assert.equal(typeof packageExports.generateRobotsTxt, 'function');
   assert.equal(typeof packageExports.routesToPaths, 'function');
 });
 
@@ -76,6 +80,66 @@ test('escapes query parameters for XML', () => {
   });
 
   assert.match(xml, /language=tr&amp;sort=new/);
+});
+
+test('generates robots.txt with an absolute sitemap reference', () => {
+  assert.equal(
+    generateRobotsTxt({ siteUrl: 'https://example.com' }),
+    [
+      'User-agent: *',
+      'Allow: /',
+      '',
+      'Sitemap: https://example.com/sitemap.xml',
+      '',
+    ].join('\n'),
+  );
+});
+
+test('generates custom robots.txt groups and sitemap references', () => {
+  const robots = generateRobotsTxt({
+    siteUrl: 'https://example.com',
+    groups: [
+      {
+        userAgent: ['Googlebot', 'Bingbot'],
+        allow: ['/'],
+        disallow: ['/admin', '/preview'],
+        crawlDelay: 2,
+      },
+    ],
+    sitemap: ['/sitemap-news.xml', 'https://cdn.example.com/sitemap.xml'],
+  });
+
+  assert.match(robots, /User-agent: Googlebot\nUser-agent: Bingbot/);
+  assert.match(robots, /Disallow: \/admin/);
+  assert.match(robots, /Crawl-delay: 2/);
+  assert.match(robots, /Sitemap: https:\/\/example\.com\/sitemap-news\.xml/);
+  assert.match(robots, /Sitemap: https:\/\/cdn\.example\.com\/sitemap\.xml/);
+});
+
+test('writes robots.txt and creates missing output directories', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-robots-'));
+  const output = join(directory, 'public', 'robots.txt');
+
+  const result = await writeRobotsTxt({
+    siteUrl: 'https://example.com',
+    sitemap: ['/sitemap.xml', '/sitemap-images.xml'],
+    output,
+  });
+
+  assert.equal(result.output, resolve(output));
+  assert.equal(result.sitemapCount, 2);
+  assert.match(await readFile(output, 'utf8'), /User-agent: \*/);
+});
+
+test('rejects invalid robots.txt directives', () => {
+  assert.throws(
+    () =>
+      generateRobotsTxt({
+        siteUrl: 'https://example.com',
+        groups: [{ userAgent: 'bot\nDisallow: /' }],
+      }),
+    /Invalid robots\.txt user-agent/,
+  );
 });
 
 test('rejects invalid site URL and route metadata', () => {
@@ -275,7 +339,7 @@ test('CLI exposes init, generate and version commands in help', () => {
   assert.equal(result.status, 0);
   assert.match(result.stdout, /\(none\)\s+Open the interactive main menu/);
   assert.match(result.stdout, /ngx-seo-kit init/);
-  assert.match(result.stdout, /generate\s+Generate sitemap/);
+  assert.match(result.stdout, /generate\s+Generate SEO files/);
   assert.match(result.stdout, /analytics\s+Install Google Analytics/);
   assert.match(result.stdout, /version\s+Print the installed ngx-seo-kit version/);
 });
@@ -310,7 +374,7 @@ test('CLI prints its version without loading a config', async () => {
   assert.equal(result.stdout.trim(), packageJson.version);
 });
 
-test('CLI does not open setup prompts in non-interactive environments', async () => {
+test('CLI generate does not create a missing configuration', async () => {
   const cli = resolve('dist/src/cli.js');
   const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-cli-'));
   const result = spawnSync(process.execPath, [cli, 'generate'], {
@@ -321,6 +385,7 @@ test('CLI does not open setup prompts in non-interactive environments', async ()
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /ngx-seo-kit init/);
+  await assert.rejects(readFile(join(directory, 'seo.config.ts'), 'utf8'));
 });
 
 test('CLI generates a sitemap from routes discovered in the config', async () => {
@@ -356,6 +421,11 @@ test('CLI generates a sitemap from routes discovered in the config', async () =>
   assert.match(await readFile(join(directory, 'public', 'sitemap.xml'), 'utf8'), /\/about/);
   assert.match(result.stdout, /Sitemap stylesheet generated/);
   assert.match(await readFile(join(directory, 'public', 'sitemap.xsl'), 'utf8'), /<table>/);
+  assert.match(result.stdout, /Robots\.txt generated/);
+  assert.match(
+    await readFile(join(directory, 'public', 'robots.txt'), 'utf8'),
+    /Sitemap: https:\/\/example\.com\/sitemap\.xml/,
+  );
 });
 
 test('CLI loads a TypeScript config with an imported routes variable', async () => {
@@ -389,7 +459,8 @@ test('CLI loads a TypeScript config with an imported routes variable', async () 
        sitemap: {
          routes: await routesToPathsAsync(routes),
          output: 'public/sitemap.xml'
-       }
+       },
+       robots: false
      });`,
   );
 
@@ -405,6 +476,7 @@ test('CLI loads a TypeScript config with an imported routes variable', async () 
     assert.match(sitemap, /<loc>https:\/\/example\.com\/<\/loc>/);
     assert.match(sitemap, /<loc>https:\/\/example\.com\/about<\/loc>/);
     assert.doesNotMatch(sitemap, /users/);
+    await assert.rejects(readFile(join(directory, 'public', 'robots.txt'), 'utf8'));
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

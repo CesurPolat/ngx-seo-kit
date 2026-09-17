@@ -1,8 +1,9 @@
 # CLI guide
 
-The `ngx-seo-kit` CLI generates a `sitemap.xml` file from routes declared in a
-configuration file. Run commands from your project root. Relative configuration
-and output paths are resolved from the directory where the command is run.
+The `ngx-seo-kit` CLI generates `sitemap.xml` and `robots.txt` files from routes
+declared in a configuration file. Run commands from your project root. Relative
+configuration and output paths are resolved from the directory where the command
+is run.
 
 ## Requirements and installation
 
@@ -47,11 +48,19 @@ npx ngx-seo-kit
 
 Use the arrow keys to choose one of these actions:
 
-- **Generate sitemap** reads the current configuration and writes the sitemap.
+- **Generate SEO files (sitemap.xml, robots.txt, etc.)** reads the current
+  configuration and writes the configured search-engine files.
 - **Set up Google Analytics** installs a Google tag in the Angular index file.
-- **Create configuration** starts the guided setup. This option is disabled when
-  a configuration already exists.
 - **Exit** closes the CLI without making changes.
+
+If no configuration exists when **Generate SEO files** is selected, the guided
+setup opens automatically and creates it before generation.
+
+After an interactive action finishes, the main menu opens again. The session
+stays open until **Exit** is selected. Explicit commands such as
+`ngx-seo-kit generate` still run once and exit, which keeps scripts and CI jobs
+predictable. Interrupting a setup or analytics prompt cancels only that action
+and returns to the main menu.
 
 The guided setup asks for the site URL, sitemap output path, and optional
 excluded routes. It automatically discovers Angular routes under `src`, then
@@ -81,7 +90,7 @@ file and use `generate` to create a sitemap from the existing configuration.
 
 ### `generate`
 
-Read the configuration and generate a sitemap:
+Read the configuration and generate a sitemap and robots file:
 
 ```bash
 npx ngx-seo-kit generate
@@ -96,18 +105,19 @@ directory in this order:
 4. `seo.config.js`
 5. `seo.config.cjs`
 
-If no configuration is found in an interactive terminal, the setup opens. The
-setup is disabled in CI and non-interactive terminals. In those environments,
-the command exits with an error and asks you to run `ngx-seo-kit init` first.
-Create and commit the configuration file before running your CI workflow. Use
-the explicit `generate` command in automation; a bare command only falls back to
-generation in non-interactive environments for backward compatibility.
+If no configuration is found in an interactive terminal, `generate` opens the
+guided setup automatically. In CI and other non-interactive environments it
+exits without writing files and asks you to run `ngx-seo-kit init` first. Create
+and commit the configuration file before running your CI workflow. A bare
+command only falls back to generation in non-interactive environments for
+backward compatibility.
 
 After successful generation, the CLI prints the absolute output path and number
 of URLs written:
 
 ```text
 ✓ Sitemap generated: /project/public/sitemap.xml (3 URLs)
+✓ Robots.txt generated: /project/public/robots.txt
 ```
 
 ### `init`
@@ -212,6 +222,10 @@ export default defineSeoConfig({
     ],
     exclude: ['/404', '/admin'],
   },
+  robots: {
+    output: 'public/robots.txt',
+    groups: [{ userAgent: '*', allow: ['/'], disallow: ['/admin'] }],
+  },
 });
 ```
 
@@ -230,6 +244,16 @@ Optional sitemap fields:
   HTML table while crawlers continue to receive standard sitemap XML.
 - `exclude`: Routes omitted from the generated sitemap.
 - `output`: Destination for the generated XML file.
+
+The optional top-level `robots` field controls `robots.txt`. When omitted, the
+CLI writes `robots.txt` beside the sitemap with an allow-all group and a sitemap
+reference. Set it to `false` to disable generation. The options object accepts:
+
+- `output`: Destination for `robots.txt`.
+- `groups`: User-agent groups with `allow`, `disallow`, and optional
+  `crawlDelay` directives.
+- `sitemap`: A sitemap path, an array of paths or absolute URLs, or `false` to
+  omit sitemap directives.
 
 Optional route fields:
 
@@ -278,8 +302,9 @@ Generate the sitemap after the Angular build:
 }
 ```
 
-Angular copies `public/sitemap.xml` into the build output. Run the generator
-before `ng build` so the latest sitemap is included in the deployment.
+Angular copies `public/sitemap.xml` and `public/robots.txt` into the build output.
+Run the generator before `ng build` so the latest files are included in the
+deployment.
 
 Example CI steps:
 

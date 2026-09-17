@@ -14,4 +14,8 @@ export default defineSeoConfig({
     ],
     exclude: ['/404', '/admin'],
   },
+  robots: {
+    output: 'public/robots.txt',
+    groups: [{ userAgent: '*', allow: ['/'], disallow: ['/admin'] }],
+  },
 });

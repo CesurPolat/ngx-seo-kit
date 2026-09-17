@@ -72,3 +72,34 @@ export interface WriteSitemapResult {
   urlCount: number;
   stylesheetOutput?: string;
 }
+
+export interface RobotsTxtGroup {
+  /** One or more crawler names, for example `*` or `Googlebot`. */
+  userAgent: string | string[];
+  allow?: string[];
+  disallow?: string[];
+  crawlDelay?: number;
+}
+
+export interface GenerateRobotsTxtOptions {
+  siteUrl: string;
+  /** Crawler-specific rules. Defaults to allowing every crawler. */
+  groups?: RobotsTxtGroup[];
+  /** Sitemap paths or absolute URLs. Defaults to `/sitemap.xml`; `false` omits them. */
+  sitemap?: string | string[] | false;
+}
+
+export interface RobotsTxtOptions
+  extends Omit<GenerateRobotsTxtOptions, 'siteUrl'> {
+  /** File destination. Defaults to `robots.txt` beside the sitemap output. */
+  output?: string;
+}
+
+export interface WriteRobotsTxtOptions extends GenerateRobotsTxtOptions {
+  output: string;
+}
+
+export interface WriteRobotsTxtResult {
+  output: string;
+  sitemapCount: number;
+}

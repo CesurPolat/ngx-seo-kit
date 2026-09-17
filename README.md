@@ -1,6 +1,6 @@
 # ngx-seo-kit
 
-A type-safe SEO toolkit that generates `sitemap.xml` files for Angular applications at build time.
+A type-safe SEO toolkit that generates `sitemap.xml` and `robots.txt` files for Angular applications at build time.
 
 > This project is under active development. The first usable release focuses on generating XML sitemaps for static, predefined pages.
 
@@ -17,6 +17,7 @@ A type-safe SEO toolkit that generates `sitemap.xml` files for Angular applicati
 - Command-line interface and programmatic API
 - Guided interactive CLI setup
 - Guided Google Analytics installation for Angular apps
+- Automatic `robots.txt` generation with a sitemap reference
 
 ## Requirements
 
@@ -45,15 +46,19 @@ Launch the interactive main menu:
 npx ngx-seo-kit
 ```
 
+The menu remains open after each completed action and closes only when you
+select **Exit**. Direct commands such as `ngx-seo-kit generate` still run once.
+
 If the package is not installed in the current project, the interactive CLI
 asks for confirmation before adding its current version to `devDependencies`.
 Declining leaves the project unchanged and continues with the temporary `npx`
 copy.
 
-Choose **Create configuration** to start the guided setup. The setup asks for
-your site URL, sitemap output path, and excluded routes. It discovers Angular
+Choose **Generate SEO files**. If no configuration exists, the guided setup
+opens automatically and asks for your site URL, sitemap output path, and
+excluded routes. It discovers Angular
 routes from `src/app/app.routes.ts`, previews the configuration, creates `seo.config.ts`, and
-generates the first sitemap. If no Angular routes are found, setup still creates
+generates the first sitemap and robots file. If no Angular routes are found, setup still creates
 the configuration with an empty `sitemap.routes` array so you can add public
 paths manually; sitemap generation is skipped until routes are available.
 
@@ -78,10 +83,13 @@ export default defineSeoConfig({
     stylesheet: true,
     exclude: ['/404', '/admin'],
   },
+  robots: {
+    groups: [{ userAgent: '*', allow: ['/'], disallow: ['/admin'] }],
+  },
 });
 ```
 
-Generate the sitemap:
+Generate the sitemap and robots file:
 
 ```bash
 npx ngx-seo-kit
@@ -92,7 +100,12 @@ When finished, the CLI displays the output path and URL count:
 ```text
 ✓ Sitemap generated: /project/public/sitemap.xml (4 URLs)
 ✓ Sitemap stylesheet generated: /project/dist/my-portfolio/browser/sitemap.xsl
+✓ Robots.txt generated: /project/public/robots.txt
 ```
+
+`robots.txt` is generated beside the sitemap by default and references its
+public URL. Set `robots: false` to disable it, or configure `robots.output`,
+`robots.groups`, and `robots.sitemap` to customize the file.
 
 With `stylesheet: true`, search engines still receive a standard XML sitemap,
 while browsers render it as a responsive HTML table. For customization:
@@ -154,8 +167,9 @@ Run the sitemap command after the Angular build:
 }
 ```
 
-Angular copies `public/sitemap.xml` into the build output. Generate the sitemap
-before `ng build` so the latest file is included in the deployment.
+Angular copies `public/sitemap.xml` and `public/robots.txt` into the build output.
+Generate the files before `ng build` so the latest versions are included in the
+deployment.
 
 After deployment, the following URL should return the XML file directly:
 
@@ -354,7 +368,7 @@ automatic.
 - [x] Automatic Angular route discovery
 - [ ] Dynamic route sources
 - [ ] Sitemap indexes and splitting at 50,000 URLs
-- [ ] `robots.txt` generation with a sitemap reference
+- [x] `robots.txt` generation with a sitemap reference
 
 ## Development
 

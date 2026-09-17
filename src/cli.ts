@@ -7,12 +7,13 @@ import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { basename, dirname, extname, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { register as registerCommonJs } from 'tsx/cjs/api';
 import { register } from 'tsx/esm/api';
 import { generateSitemap, writeSitemap } from './sitemap-generation/index.js';
 import { discoverAngularRoutes, discoverRoutes } from './sitemap-generation/route-discovery.js';
+import { writeRobotsTxt } from './sitemap-generation/robots.js';
 import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from './site-url.js';
 import type { NgxSeoConfig } from './types.js';
 import process from 'node:process';
@@ -35,7 +36,7 @@ interface CliOptions {
   help: boolean;
 }
 
-type MenuAction = 'generate' | 'init' | 'analytics' | 'help' | 'exit';
+type MenuAction = 'generate' | 'analytics' | 'help' | 'exit';
 
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
@@ -54,26 +55,47 @@ async function main(): Promise<void> {
   await notifyPackageUpdate();
 
   const requestedConfigPath = options.config ? resolve(options.config) : undefined;
-  let command = options.command;
 
-  if (!command) {
-    if (isInteractiveTerminal()) {
-      const existingConfigPath = requestedConfigPath
-        ? await optionalConfig(requestedConfigPath)
-        : await findConfig(process.cwd());
-      const action = await runMainMenu(Boolean(existingConfigPath));
-
-      if (action === 'exit') {
-        console.log('Goodbye!');
-        return;
-      }
-
-      command = action;
-    } else {
-      command = 'generate';
-    }
+  if (options.command) {
+    await runCommand(options.command, options, requestedConfigPath);
+    return;
   }
 
+  if (!isInteractiveTerminal()) {
+    await runCommand('generate', options, requestedConfigPath);
+    return;
+  }
+
+  while (true) {
+    const action = await runMainMenu();
+
+    if (action === 'exit') {
+      console.log('Goodbye!');
+      return;
+    }
+
+    try {
+      await runCommand(action, options, requestedConfigPath);
+    } catch (error) {
+      if (
+        error instanceof SetupCancelledError ||
+        (error instanceof Error && error.name === 'ExitPromptError')
+      ) {
+        console.log('\nSetup cancelled.');
+        continue;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`✗ ${message}`);
+    }
+  }
+}
+
+async function runCommand(
+  command: Exclude<NonNullable<CliOptions['command']>, 'version'>,
+  options: CliOptions,
+  requestedConfigPath?: string,
+): Promise<void> {
   if (command === 'analytics') {
     await runAnalyticsSetup(options);
     return;
@@ -105,7 +127,7 @@ async function main(): Promise<void> {
       config = await loadConfig(configPath);
     } else {
       assertInteractiveTerminal();
-      configPath = resolve(DEFAULT_CONFIG_FILES[0]);
+      configPath = requestedConfigPath ?? resolve(DEFAULT_CONFIG_FILES[0]);
       console.log("No SEO config found. Let's create one.\n");
       config = await runSetupMenu(configPath, options.output);
       configCreated = true;
@@ -145,6 +167,19 @@ async function main(): Promise<void> {
   );
   if (result.stylesheetOutput) {
     console.log(`✓ Sitemap stylesheet generated: ${result.stylesheetOutput}`);
+  }
+
+  if (config.robots !== false) {
+    const robots = config.robots ?? {};
+    const robotsResult = await writeRobotsTxt({
+      siteUrl: config.siteUrl,
+      output: robots.output ?? join(dirname(output), 'robots.txt'),
+      ...(robots.groups ? { groups: robots.groups } : {}),
+      ...(robots.sitemap !== undefined
+        ? { sitemap: robots.sitemap }
+        : { sitemap: `/${basename(output)}` }),
+    });
+    console.log(`✓ Robots.txt generated: ${robotsResult.output}`);
   }
 }
 
@@ -248,10 +283,6 @@ async function requireConfig(path: string): Promise<string> {
   }
 
   return path;
-}
-
-async function optionalConfig(path: string): Promise<string | undefined> {
-  return (await fileExists(path)) ? path : undefined;
 }
 
 function isInteractiveTerminal(): boolean {
@@ -434,9 +465,7 @@ async function installDevDependency(specifier: string): Promise<void> {
   });
 }
 
-async function runMainMenu(
-  hasConfig: boolean,
-): Promise<Exclude<MenuAction, 'help'>> {
+async function runMainMenu(): Promise<Exclude<MenuAction, 'help'>> {
   printBrand();
 
   while (true) {
@@ -444,23 +473,16 @@ async function runMainMenu(
       message: 'What would you like to do?',
       choices: [
         {
-          name: 'Generate sitemap',
+          name: 'Generate SEO files (sitemap.xml, robots.txt, etc.)',
           value: 'generate',
           description:
-            'Create sitemap.xml from your config. Direct command: npx ngx-seo-kit generate',
+            'Create search-engine files from your config. Direct command: npx ngx-seo-kit generate',
         },
         {
           name: 'Set up Google Analytics',
           value: 'analytics',
           description:
             'Install a Google tag in the Angular app. Direct command: npx ngx-seo-kit analytics',
-        },
-        {
-          name: 'Create configuration',
-          value: 'init',
-          description:
-            'Start the guided setup. Direct command: npx ngx-seo-kit init',
-          ...(hasConfig ? { disabled: 'A configuration file already exists' } : {}),
         },
         {
           name: 'Help & command examples',
@@ -599,6 +621,7 @@ async function runSetupMenu(
   console.log('\nConfiguration summary');
   console.log(`  Site URL: ${config.siteUrl}`);
   console.log(`  Output:   ${config.sitemap.output}`);
+  console.log('  Robots:   Enabled');
   console.log(`  Routes:   ${discoveredRoutes.length} discovered automatically`);
   console.log('  Browser:  Styled HTML table');
   console.log(`  Excluded: ${exclude.length}`);
@@ -793,6 +816,35 @@ function validateConfig(value: unknown, path: string): asserts value is NgxSeoCo
       }
     }
   }
+
+  const robots = config.robots;
+  if (
+    robots !== undefined &&
+    robots !== false &&
+    (typeof robots !== 'object' || robots === null)
+  ) {
+    throw new Error('robots must be false or an options object.');
+  }
+
+  if (typeof robots === 'object' && robots !== null) {
+    if (
+      robots.output !== undefined &&
+      (typeof robots.output !== 'string' || !robots.output.trim())
+    ) {
+      throw new Error('robots.output must be a non-empty string.');
+    }
+    if (robots.groups !== undefined && !Array.isArray(robots.groups)) {
+      throw new Error('robots.groups must be an array.');
+    }
+    if (
+      robots.sitemap !== undefined &&
+      robots.sitemap !== false &&
+      typeof robots.sitemap !== 'string' &&
+      !Array.isArray(robots.sitemap)
+    ) {
+      throw new Error('robots.sitemap must be a string, array, or false.');
+    }
+  }
 }
 
 function printHelp(): void {
@@ -807,7 +859,7 @@ Usage:
 
 Commands:
   (none)               Open the interactive main menu.
-  generate             Generate sitemap.xml using the current config.
+  generate             Generate SEO files (sitemap.xml, robots.txt, etc.).
   init                 Create a config through the guided setup.
   analytics            Install Google Analytics in an Angular index file.
   version              Print the installed ngx-seo-kit version.
