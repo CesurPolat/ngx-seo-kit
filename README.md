@@ -156,6 +156,10 @@ export default defineSeoConfig({
 discovery is required or importing the application route tree has runtime side
 effects.
 
+For an Angular `ng test` that reads the route configuration registered at
+runtime (including supported lazy route arrays), see
+[Reading Angular runtime routes](docs/angular-runtime-route-test.md).
+
 ## Angular build integration
 
 Run the sitemap command after the Angular build:

@@ -43,7 +43,13 @@ interface CliOptions {
   help: boolean;
 }
 
-type MenuAction = 'generate' | 'analytics' | 'metadata' | 'help' | 'exit';
+type MenuAction =
+  | 'generate'
+  | 'analytics'
+  | 'metadata'
+  | 'route-export-test'
+  | 'help'
+  | 'exit';
 
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
@@ -82,6 +88,11 @@ async function main(): Promise<void> {
     }
 
     try {
+      if (action === 'route-export-test') {
+        await runRouteExportTest();
+        continue;
+      }
+
       await runCommand(action, options, requestedConfigPath);
     } catch (error) {
       if (
@@ -534,6 +545,12 @@ async function runMainMenu(): Promise<Exclude<MenuAction, 'help'>> {
             'Install global social and structured metadata. Direct command: npx ngx-seo-kit metadata',
         },
         {
+          name: 'Run runtime route export test',
+          value: 'route-export-test',
+          description:
+            'Run ng test --include=**/route-export.service.spec.ts to read Router.config.',
+        },
+        {
           name: 'Help & command examples',
           value: 'help',
           description:
@@ -553,6 +570,51 @@ async function runMainMenu(): Promise<Exclude<MenuAction, 'help'>> {
 
     printHelp();
   }
+}
+
+/** Runs the Angular test that reads the route configuration from Router.config. */
+async function runRouteExportTest(): Promise<void> {
+  const ngArgs = ['test', '--include=**/route-export.service.spec.ts'];
+  const executable = process.platform === 'win32'
+    ? process.env.ComSpec ?? 'cmd.exe'
+    : 'ng';
+  const args = process.platform === 'win32'
+    ? ['/d', '/s', '/c', `ng ${ngArgs.join(' ')}`]
+    : ngArgs;
+
+  console.log(`\nRunning: ng ${ngArgs.join(' ')}\n`);
+
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn(executable, args, {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+    });
+
+    child.once('error', (error) => {
+      const notFound = (error as NodeJS.ErrnoException).code === 'ENOENT';
+      reject(
+        notFound
+          ? new Error(
+              'Angular CLI was not found. Run this option from an Angular project with @angular/cli installed.',
+            )
+          : error,
+      );
+    });
+    child.once('exit', (code, signal) => {
+      if (code === 0) {
+        resolvePromise();
+        return;
+      }
+
+      reject(
+        new Error(
+          signal
+            ? `Route export test was terminated by signal ${signal}.`
+            : `Route export test failed with exit code ${code ?? 'unknown'}.`,
+        ),
+      );
+    });
+  });
 }
 
 async function runAnalyticsSetup(options: CliOptions): Promise<void> {
