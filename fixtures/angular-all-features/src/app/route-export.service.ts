@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { routesToPathsAsync } from 'ngx-seo-kit';
+import { routesToPaths } from 'ngx-seo-kit';
 
 /**
  * Reads the Router's runtime configuration.
@@ -12,7 +12,7 @@ import { routesToPathsAsync } from 'ngx-seo-kit';
 export class RouteExportService {
   constructor(private readonly router: Router) {}
 
-  async sitemapPaths(): Promise<string[]> {
-    return routesToPathsAsync(this.router.config);
+  sitemapPaths(): string[] {
+    return routesToPaths(this.router.config);
   }
 }

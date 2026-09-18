@@ -10,14 +10,14 @@ Install the package in the Angular application, then add this service:
 ```ts
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { routesToPathsAsync } from 'ngx-seo-kit';
+import { routesToPaths } from 'ngx-seo-kit';
 
 @Injectable({ providedIn: 'root' })
 export class RouteExportService {
   constructor(private readonly router: Router) {}
 
-  sitemapPaths(): Promise<string[]> {
-    return routesToPathsAsync(this.router.config);
+  sitemapPaths(): string[] {
+    return routesToPaths(this.router.config);
   }
 }
 ```
@@ -48,15 +48,17 @@ describe('RouteExportService', () => {
 Run it with:
 
 ```bash
-ng test --include='**/route-export.service.spec.ts'
+ng test --include='**/route-export.service.spec.ts' --watch=false
 ```
 
 The interactive `npx ngx-seo-kit` menu also contains **Run runtime route
-export test**, which runs the same command from the Angular project root.
+export test**. On its first run it creates `src/app/route-export.service.ts`
+and `src/app/route-export.service.spec.ts` from the route array exported by
+`src/app/app.routes.ts` (or, when that array is private, the `ApplicationConfig`
+exported by `src/app/app.config.ts`), then runs the same command from the
+Angular project root. It never overwrites either generated file.
 
-`routesToPathsAsync` follows lazy `loadChildren` functions that resolve to a
-route array, excludes redirects, wildcard routes, and parameterised paths, and
-returns normalized URL paths. A lazy-loaded NgModule does not expose its child
-routes through `loadChildren` alone; for those routes, use the package's
-build-time `discoverRoutes()` source scanner or load the module and inspect its
-router configuration separately.
+`routesToPaths` follows eager `children` arrays, excludes redirects, wildcard
+routes, and parameterised paths, and returns normalized URL paths. Lazy
+`loadChildren` children are not loaded by this test; use the package's
+build-time `discoverRoutes()` source scanner for those routes.
