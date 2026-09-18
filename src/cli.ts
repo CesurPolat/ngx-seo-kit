@@ -18,6 +18,7 @@ import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from './site-url.
 import type { NgxSeoConfig } from './types.js';
 import process from 'node:process';
 import { installGoogleTag, normalizeGoogleTagId } from './analytics/google-tag.js';
+import { installSocialMetadata } from './metadata/social-metadata.js';
 
 const DEFAULT_CONFIG_FILES = [
   'seo.config.ts',
@@ -28,15 +29,21 @@ const DEFAULT_CONFIG_FILES = [
 ] as const;
 
 interface CliOptions {
-  command?: 'generate' | 'init' | 'analytics' | 'version';
+  command?: 'generate' | 'init' | 'analytics' | 'metadata' | 'version';
   config?: string;
   output?: string;
   tagId?: string;
   index?: string;
+  title?: string;
+  description?: string;
+  url?: string;
+  image?: string;
+  siteName?: string;
+  locale?: string;
   help: boolean;
 }
 
-type MenuAction = 'generate' | 'analytics' | 'help' | 'exit';
+type MenuAction = 'generate' | 'analytics' | 'metadata' | 'help' | 'exit';
 
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
@@ -98,6 +105,11 @@ async function runCommand(
 ): Promise<void> {
   if (command === 'analytics') {
     await runAnalyticsSetup(options);
+    return;
+  }
+
+  if (command === 'metadata') {
+    await runMetadataSetup(options);
     return;
   }
 
@@ -194,6 +206,7 @@ function parseArguments(args: string[]): CliOptions {
       argument === 'generate' ||
       argument === 'init' ||
       argument === 'analytics' ||
+      argument === 'metadata' ||
       argument === 'version'
     ) {
       if (commandSeen) {
@@ -237,6 +250,36 @@ function parseArguments(args: string[]): CliOptions {
 
     if (argument === '--index') {
       options.index = readOptionValue(args, ++index, argument);
+      continue;
+    }
+
+    if (argument === '--title') {
+      options.title = readOptionValue(args, ++index, argument);
+      continue;
+    }
+
+    if (argument === '--description') {
+      options.description = readOptionValue(args, ++index, argument);
+      continue;
+    }
+
+    if (argument === '--url') {
+      options.url = readOptionValue(args, ++index, argument);
+      continue;
+    }
+
+    if (argument === '--image') {
+      options.image = readOptionValue(args, ++index, argument);
+      continue;
+    }
+
+    if (argument === '--site-name') {
+      options.siteName = readOptionValue(args, ++index, argument);
+      continue;
+    }
+
+    if (argument === '--locale') {
+      options.locale = readOptionValue(args, ++index, argument);
       continue;
     }
 
@@ -485,6 +528,12 @@ async function runMainMenu(): Promise<Exclude<MenuAction, 'help'>> {
             'Install a Google tag in the Angular app. Direct command: npx ngx-seo-kit analytics',
         },
         {
+          name: 'Set up Open Graph & Schema',
+          value: 'metadata',
+          description:
+            'Install global social and structured metadata. Direct command: npx ngx-seo-kit metadata',
+        },
+        {
           name: 'Help & command examples',
           value: 'help',
           description:
@@ -536,6 +585,85 @@ async function runAnalyticsSetup(options: CliOptions): Promise<void> {
 
   console.log(`\n✓ Google Analytics ${labels[result.action]}: ${result.tagId}`);
   console.log(`  Index: ${result.index}`);
+}
+
+async function runMetadataSetup(options: CliOptions): Promise<void> {
+  const interactive = isInteractiveTerminal();
+  if (
+    !interactive &&
+    (!options.title || !options.description || !options.url || !options.image)
+  ) {
+    throw new Error(
+      'Open Graph setup requires --title, --description, --url, and --image in CI and non-interactive terminals.',
+    );
+  }
+
+  const url = options.url ?? await input({
+    message: 'Canonical site URL',
+    default: 'https://example.com',
+    validate: validateAbsoluteHttpUrl,
+  });
+  const title = options.title ?? await input({
+    message: 'Open Graph title',
+    validate: validateRequiredText,
+  });
+  const description = options.description ?? await input({
+    message: 'Open Graph description',
+    validate: validateRequiredText,
+  });
+  const image = options.image ?? await input({
+    message: 'Social image URL',
+    default: new URL('/og-image.png', url).toString(),
+    validate: validateAbsoluteHttpUrl,
+  });
+  const siteName = options.siteName ?? (interactive
+    ? await input({
+        message: 'Site name',
+        default: title,
+        validate: validateRequiredText,
+      })
+    : title);
+  const locale = options.locale ?? (interactive
+    ? await input({
+        message: 'Open Graph locale',
+        default: 'en_US',
+        validate: (value) =>
+          /^[a-z]{2}_[A-Z]{2}$/.test(value.trim()) || 'Use a locale like en_US or tr_TR.',
+      })
+    : 'en_US');
+
+  const result = await installSocialMetadata({
+    title,
+    description,
+    url,
+    image,
+    siteName,
+    locale,
+    ...(options.index ? { index: options.index } : {}),
+  });
+  const labels = {
+    added: 'installed',
+    updated: 'updated',
+    unchanged: 'already configured',
+  } as const;
+
+  console.log(`\n✓ Open Graph & Schema ${labels[result.action]}`);
+  console.log(`  Index: ${result.index}`);
+}
+
+function validateRequiredText(value: string): true | string {
+  return value.trim().length > 0 || 'This value cannot be empty.';
+}
+
+function validateAbsoluteHttpUrl(value: string): true | string {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? true
+      : 'URL must use http or https.';
+  } catch {
+    return 'Enter a valid absolute URL.';
+  }
 }
 
 function assertInteractiveAnalyticsTerminal(): void {
@@ -855,6 +983,7 @@ Usage:
   npx ngx-seo-kit generate [options]
   npx ngx-seo-kit init [options]
   npx ngx-seo-kit analytics [options]
+  npx ngx-seo-kit metadata [options]
   npx ngx-seo-kit version
 
 Commands:
@@ -862,13 +991,20 @@ Commands:
   generate             Generate SEO files (sitemap.xml, robots.txt, etc.).
   init                 Create a config through the guided setup.
   analytics            Install Google Analytics in an Angular index file.
+  metadata             Install Open Graph and Schema.org metadata.
   version              Print the installed ngx-seo-kit version.
 
 Options:
   -c, --config <path>  Config file (default: seo.config.ts)
   -o, --output <path>  Override the sitemap output path
   --tag-id <id>        Google Analytics measurement ID (for example G-XXXXXXXXXX)
-  --index <path>       Angular index file (default: src/index.html)
+  --index <path>       Angular index file for analytics or metadata
+  --title <text>       Open Graph title used by metadata
+  --description <text> Open Graph description used by metadata
+  --url <url>          Canonical absolute URL used by metadata
+  --image <url>        Absolute social image URL used by metadata
+  --site-name <text>   Optional Open Graph site name
+  --locale <locale>    Open Graph locale (default: en_US)
   -h, --help           Show this help
   -v, --version        Print the installed ngx-seo-kit version
 
@@ -879,6 +1015,7 @@ Examples:
   npx ngx-seo-kit generate
   npx ngx-seo-kit analytics --tag-id G-XXXXXXXXXX
   npx ngx-seo-kit analytics --tag-id G-XXXXXXXXXX --index projects/app/src/index.html
+  npx ngx-seo-kit metadata --title "Example" --description "Example site" --url https://example.com --image https://example.com/og-image.png
   npx ngx-seo-kit generate --config config/seo.production.ts
   npx ngx-seo-kit generate --output public/sitemap.xml
 `);

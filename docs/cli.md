@@ -51,6 +51,8 @@ Use the arrow keys to choose one of these actions:
 - **Generate SEO files (sitemap.xml, robots.txt, etc.)** reads the current
   configuration and writes the configured search-engine files.
 - **Set up Google Analytics** installs a Google tag in the Angular index file.
+- **Set up Open Graph & Schema** installs global social metadata and Schema.org
+  structured data in the Angular index file.
 - **Exit** closes the CLI without making changes.
 
 If no configuration exists when **Generate SEO files** is selected, the guided
@@ -164,6 +166,31 @@ Re-running it does not duplicate the block, and supplying another measurement
 ID updates the owned block. An existing Google tag without those markers is
 never overwritten automatically.
 
+### `metadata`
+
+Install global Open Graph metadata and Schema.org `WebSite` JSON-LD:
+
+```bash
+npx ngx-seo-kit metadata
+```
+
+Interactive setup asks for the canonical URL, title, description, social image,
+site name, and locale. In CI and other non-interactive terminals, pass the four
+required values:
+
+```bash
+npx ngx-seo-kit metadata \
+  --title "Example" \
+  --description "Example Angular application" \
+  --url https://example.com \
+  --image https://example.com/og-image.png
+```
+
+The generated block is marked as owned by ngx-seo-kit, so rerunning the command
+updates it without duplicates. Unmanaged Open Graph tags are not overwritten.
+This is global fallback metadata; use Angular or SSR integration for
+route-specific values.
+
 ## Options
 
 | Option | Short form | Description |
@@ -171,7 +198,13 @@ never overwritten automatically.
 | `--config <path>` | `-c <path>` | Configuration file to read or create with `init` |
 | `--output <path>` | `-o <path>` | Override `sitemap.output` for the current invocation |
 | `--tag-id <id>` | | Google Analytics measurement ID used by `analytics` |
-| `--index <path>` | | Angular index file used by `analytics` (default: `src/index.html`) |
+| `--index <path>` | | Angular index file used by `analytics` and `metadata` (default: `src/index.html`) |
+| `--title <text>` | | Open Graph title used by `metadata` |
+| `--description <text>` | | Open Graph description used by `metadata` |
+| `--url <url>` | | Canonical absolute URL used by `metadata` |
+| `--image <url>` | | Absolute social image URL used by `metadata` |
+| `--site-name <text>` | | Optional Open Graph site name |
+| `--locale <locale>` | | Open Graph locale such as `en_US` or `tr_TR` |
 | `--help` | `-h` | Print help and exit without performing an operation |
 
 Use a custom configuration and output path together:

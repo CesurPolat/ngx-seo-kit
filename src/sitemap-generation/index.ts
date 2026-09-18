@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { normalizeSiteUrl } from '../site-url.js';
+import { escapeXml } from '../utils.js';
 import {
   CHANGE_FREQUENCIES,
   type GenerateSitemapOptions,
@@ -210,15 +211,6 @@ function formatLastModified(value: string | Date): string {
 
 function formatPriority(value: number): string {
   return Number(value.toFixed(1)).toString();
-}
-
-function escapeXml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
 }
 
 function countUrls(xml: string): number {

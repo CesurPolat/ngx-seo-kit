@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { escapeRegExp } from '../utils.js';
 
 const GOOGLE_TAG_START = '<!-- ngx-seo-kit:google-tag:start -->';
 const GOOGLE_TAG_END = '<!-- ngx-seo-kit:google-tag:end -->';
@@ -100,8 +101,4 @@ export async function installGoogleTag(
   await writeFile(index, updatedHtml, 'utf8');
 
   return { action: 'added', index, tagId };
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

@@ -18,6 +18,7 @@ A type-safe SEO toolkit that generates `sitemap.xml` and `robots.txt` files for 
 - Guided interactive CLI setup
 - Guided Google Analytics installation for Angular apps
 - Automatic `robots.txt` generation with a sitemap reference
+- Managed Open Graph tags and Schema.org `WebSite` JSON-LD
 
 ## Requirements
 
@@ -280,6 +281,34 @@ For Angular client-side navigation, enable **Page changes based on browser
 history events** in the web stream's Enhanced Measurement settings. Review the
 consent and privacy requirements that apply to the site before deploying
 analytics.
+
+## Open Graph and Schema setup
+
+Choose **Set up Open Graph & Schema** from the interactive menu, or run:
+
+```bash
+npx ngx-seo-kit metadata
+```
+
+The guided setup writes managed Open Graph tags and a Schema.org `WebSite`
+JSON-LD block into `src/index.html`. Re-running it updates the owned block
+without creating duplicates. Existing Open Graph tags without ngx-seo-kit
+markers are never overwritten automatically.
+
+For CI or a non-interactive terminal, provide the required values explicitly:
+
+```bash
+npx ngx-seo-kit metadata \
+  --title "Example" \
+  --description "Example Angular application" \
+  --url https://example.com \
+  --image https://example.com/og-image.png
+```
+
+Use `--index projects/storefront/src/index.html` for a custom Angular index
+path. `--site-name` and `--locale` are optional. This feature installs global
+fallback metadata; route-specific metadata still belongs in the Angular
+application or its SSR rendering flow.
 
 ## Programmatic API
 

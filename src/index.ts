@@ -9,6 +9,15 @@ export type {
   InstallGoogleTagResult,
 } from './analytics/google-tag.js';
 export {
+  generateSocialMetadataSnippet,
+  installSocialMetadata,
+} from './metadata/social-metadata.js';
+export type {
+  InstallSocialMetadataOptions,
+  InstallSocialMetadataResult,
+  SocialMetadataOptions,
+} from './metadata/social-metadata.js';
+export {
   discoverAngularRoutes,
   discoverRoutes,
   routesToPaths,

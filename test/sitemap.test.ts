@@ -341,6 +341,7 @@ test('CLI exposes init, generate and version commands in help', () => {
   assert.match(result.stdout, /ngx-seo-kit init/);
   assert.match(result.stdout, /generate\s+Generate SEO files/);
   assert.match(result.stdout, /analytics\s+Install Google Analytics/);
+  assert.match(result.stdout, /metadata\s+Install Open Graph/);
   assert.match(result.stdout, /version\s+Print the installed ngx-seo-kit version/);
 });
 

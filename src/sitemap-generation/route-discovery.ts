@@ -11,6 +11,8 @@ interface ParsedRouteFile {
   roots: ts.Expression[];
 }
 
+// #region Public API
+
 /** Converts an in-memory Angular `Routes` array to concrete sitemap paths. */
 export function routesToPaths(routes: readonly DiscoverableRoute[]): string[] {
   const discovered = new Set<string>();
@@ -85,6 +87,11 @@ export async function discoverAngularRoutes(
   return sortRoutes(discovered);
 }
 
+// #endregion Public API
+
+// #region Source file discovery
+
+/** Reads and parses every TypeScript source file below the supplied directory. */
 async function parseRouteFiles(paths: string[]): Promise<Map<string, ParsedRouteFile>> {
   const entries = await Promise.all(
     paths.map(async (path) => [
@@ -95,6 +102,7 @@ async function parseRouteFiles(paths: string[]): Promise<Map<string, ParsedRoute
   return new Map(entries);
 }
 
+/** Chooses likely route-array exports when no router bootstrap call is present. */
 function preferredRouteArrays(file: ParsedRouteFile): ts.ArrayLiteralExpression[] {
   const named = file.arrays.get('routes') ?? file.arrays.get('appRoutes');
   if (named) return [named];
@@ -107,12 +115,48 @@ function preferredRouteArrays(file: ParsedRouteFile): ts.ArrayLiteralExpression[
   return file.arrays.size === 1 ? [...file.arrays.values()] : [];
 }
 
+/** Uses the closest `src` directory as the scan root, falling back to the entry directory. */
 function inferSourceRoot(entryPath: string): string {
   const parts = entryPath.split(sep);
   const sourceIndex = parts.lastIndexOf('src');
   return sourceIndex >= 0 ? parts.slice(0, sourceIndex + 1).join(sep) : dirname(entryPath);
 }
 
+/** Recursively finds application TypeScript files while skipping dependencies and tests. */
+async function findTypeScriptFiles(directory: string): Promise<string[]> {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
+
+  const nested = await Promise.all(
+    entries
+      .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'node_modules')
+      .map(async (entry) => {
+        const path = join(directory, entry.name);
+        if (entry.isDirectory()) return findTypeScriptFiles(path);
+        if (
+          entry.isFile() &&
+          entry.name.endsWith('.ts') &&
+          !entry.name.endsWith('.d.ts') &&
+          !/\.(spec|test)\.ts$/i.test(entry.name)
+        ) {
+          return [path];
+        }
+        return [];
+      }),
+  );
+  return nested.flat();
+}
+
+// #endregion Source file discovery
+
+// #region In-memory route traversal
+
+/** Sorts paths consistently, always placing the root route first. */
 function sortRoutes(routes: Set<string>): string[] {
   return [...routes].sort((a, b) => {
     if (a === '/') return -1;
@@ -121,6 +165,7 @@ function sortRoutes(routes: Set<string>): string[] {
   });
 }
 
+/** Collects static page routes from an already loaded Angular route array. */
 function collectRouteValues(
   routes: readonly DiscoverableRoute[],
   parentPath: string,
@@ -143,6 +188,7 @@ function collectRouteValues(
   }
 }
 
+/** Collects page routes and resolves runtime `loadChildren` route arrays. */
 async function collectRouteValuesAsync(
   routes: readonly DiscoverableRoute[],
   parentPath: string,
@@ -182,6 +228,7 @@ async function collectRouteValuesAsync(
   }
 }
 
+/** Extracts a route array from the common lazy-loader return shapes. */
 function extractRoutes(value: unknown): readonly DiscoverableRoute[] | undefined {
   if (Array.isArray(value)) return value as readonly DiscoverableRoute[];
   if (!value || typeof value !== 'object') return undefined;
@@ -191,35 +238,11 @@ function extractRoutes(value: unknown): readonly DiscoverableRoute[] | undefined
   return Array.isArray(module.routes) ? (module.routes as readonly DiscoverableRoute[]) : undefined;
 }
 
-async function findTypeScriptFiles(directory: string): Promise<string[]> {
-  let entries;
-  try {
-    entries = await readdir(directory, { withFileTypes: true });
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
-    throw error;
-  }
+// #endregion In-memory route traversal
 
-  const nested = await Promise.all(
-    entries
-      .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'node_modules')
-      .map(async (entry) => {
-        const path = join(directory, entry.name);
-        if (entry.isDirectory()) return findTypeScriptFiles(path);
-        if (
-          entry.isFile() &&
-          entry.name.endsWith('.ts') &&
-          !entry.name.endsWith('.d.ts') &&
-          !/\.(spec|test)\.ts$/i.test(entry.name)
-        ) {
-          return [path];
-        }
-        return [];
-      }),
-  );
-  return nested.flat();
-}
+// #region TypeScript AST parsing
 
+/** Parses route arrays, imports, and Angular router bootstrap calls from one source file. */
 function parseRouteFile(path: string, source: string): ParsedRouteFile {
   const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);
   const arrays = new Map<string, ts.ArrayLiteralExpression>();
@@ -267,6 +290,7 @@ function parseRouteFile(path: string, source: string): ParsedRouteFile {
   return { path, sourceFile, arrays, imports, roots };
 }
 
+/** Walks a route-array expression and follows local, imported, and lazy child routes. */
 function collectRoutes(
   file: ParsedRouteFile,
   expression: ts.Expression,
@@ -313,6 +337,7 @@ function collectRoutes(
   visiting.delete(visitKey);
 }
 
+/** Resolves an array literal directly, through a local variable, or through an import. */
 function resolveArray(
   file: ParsedRouteFile,
   expression: ts.Expression | undefined,
@@ -333,6 +358,7 @@ function resolveArray(
   );
 }
 
+/** Unwraps syntax wrappers and returns the expression only when it is an array literal. */
 function unwrapArray(
   expression: ts.Expression | undefined,
 ): ts.ArrayLiteralExpression | undefined {
@@ -340,6 +366,7 @@ function unwrapArray(
   return value && ts.isArrayLiteralExpression(value) ? value : undefined;
 }
 
+/** Removes parentheses and TypeScript assertion wrappers around an expression. */
 function unwrapExpression(expression: ts.Expression | undefined): ts.Expression | undefined {
   let value = expression;
   while (
@@ -353,6 +380,7 @@ function unwrapExpression(expression: ts.Expression | undefined): ts.Expression 
   return value;
 }
 
+/** Returns a named object-literal property when it is a normal property assignment. */
 function property(
   object: ts.ObjectLiteralExpression,
   name: string,
@@ -363,6 +391,7 @@ function property(
   );
 }
 
+/** Reads a string or no-substitution template literal property value. */
 function stringProperty(object: ts.ObjectLiteralExpression, name: string): string | undefined {
   const item = property(object, name);
   const value = unwrapExpression(item?.initializer);
@@ -371,24 +400,29 @@ function stringProperty(object: ts.ObjectLiteralExpression, name: string): strin
     : undefined;
 }
 
+/** Returns supported identifier and string-literal property names. */
 function propertyName(name: ts.PropertyName): string | undefined {
   return ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : undefined;
 }
 
+/** Resolves a call name from either an identifier or a property access. */
 function callName(expression: ts.LeftHandSideExpression): string | undefined {
   if (ts.isIdentifier(expression)) return expression.text;
   return ts.isPropertyAccessExpression(expression) ? expression.name.text : undefined;
 }
 
+/** Identifies a route that renders a page directly or through `loadComponent`. */
 function hasPageTarget(route: ts.ObjectLiteralExpression): boolean {
   return ['component', 'loadComponent'].some((name) => Boolean(property(route, name)));
 }
 
+/** Joins Angular route path segments and normalizes the root path to `/`. */
 function joinRoutePath(parent: string, child: string): string {
   const parts = `${parent}/${child}`.split('/').filter(Boolean);
   return parts.length === 0 ? '/' : `/${parts.join('/')}`;
 }
 
+/** Resolves the imported route array referenced by a static `loadChildren` expression. */
 function lazyTarget(
   source: ParsedRouteFile,
   expression: ts.Expression,
@@ -425,6 +459,7 @@ function lazyTarget(
   return array ? { file: resolvedFile, expression: array } : undefined;
 }
 
+/** Resolves relative TypeScript import specifiers against the parsed source-file map. */
 function resolveImportedFile(
   importer: string,
   specifier: string,
@@ -439,3 +474,5 @@ function resolveImportedFile(
       : [`${base}.ts`, join(base, 'index.ts')];
   return candidates.map(normalize).map((path) => files.get(path)).find(Boolean);
 }
+
+// #endregion TypeScript AST parsing
