@@ -217,9 +217,19 @@ always, hourly, daily, weekly, monthly, yearly, never
 
 ## CLI options
 
-In interactive terminals, the CLI checks npm for a newer `ngx-seo-kit` release
-and prints the update command when one is available. Checks are skipped in CI;
+In interactive terminals, the CLI checks npm for a newer `ngx-seo-kit` release.
+When one is available, the interactive main menu shows an update notice directly
+under the **Angular SEO tooling** heading and an **Update ngx-seo-kit** action.
+That action installs the latest version in the project, then starts it with
+`npx --yes ngx-seo-kit@latest`. Direct commands print the update command before
+running. Checks are skipped in CI;
 set `NGX_SEO_KIT_DISABLE_UPDATE_CHECK=1` to opt out elsewhere.
+
+Update without opening the menu:
+
+```bash
+npx ngx-seo-kit --update
+```
 
 See the [CLI guide](./docs/cli.md) for setup, configuration precedence, CI usage,
 and troubleshooting details.

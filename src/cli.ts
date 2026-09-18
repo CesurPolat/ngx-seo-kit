@@ -29,7 +29,7 @@ const DEFAULT_CONFIG_FILES = [
 ] as const;
 
 interface CliOptions {
-  command?: 'generate' | 'init' | 'analytics' | 'metadata' | 'version';
+  command?: 'generate' | 'init' | 'analytics' | 'metadata' | 'update' | 'version';
   config?: string;
   output?: string;
   tagId?: string;
@@ -49,8 +49,13 @@ type MenuAction =
   | 'metadata'
   | 'route-export-test'
   | 'save-runtime-routes'
-  | 'help'
+  | 'update'
   | 'exit';
+
+interface PackageUpdate {
+  currentVersion: string;
+  latestVersion: string;
+}
 
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
@@ -65,23 +70,30 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (options.command === 'update') {
+    await updatePackage(undefined, true);
+    return;
+  }
+
   await offerLocalInstallation();
-  await notifyPackageUpdate();
+  let packageUpdate = await findPackageUpdate();
 
   const requestedConfigPath = options.config ? resolve(options.config) : undefined;
 
   if (options.command) {
+    printPackageUpdateNotice(packageUpdate);
     await runCommand(options.command, options, requestedConfigPath);
     return;
   }
 
   if (!isInteractiveTerminal()) {
+    printPackageUpdateNotice(packageUpdate);
     await runCommand('generate', options, requestedConfigPath);
     return;
   }
 
   while (true) {
-    const action = await runMainMenu();
+    const action = await runMainMenu(packageUpdate);
 
     if (action === 'exit') {
       console.log('Goodbye!');
@@ -89,6 +101,10 @@ async function main(): Promise<void> {
     }
 
     try {
+      if (action === 'update') {
+        await updatePackage(packageUpdate);
+        return;
+      }
       if (action === 'route-export-test') {
         await runRouteExportTest();
         continue;
@@ -116,7 +132,7 @@ async function main(): Promise<void> {
 }
 
 async function runCommand(
-  command: Exclude<NonNullable<CliOptions['command']>, 'version'>,
+  command: Exclude<NonNullable<CliOptions['command']>, 'update' | 'version'>,
   options: CliOptions,
   requestedConfigPath?: string,
 ): Promise<void> {
@@ -224,6 +240,7 @@ function parseArguments(args: string[]): CliOptions {
       argument === 'init' ||
       argument === 'analytics' ||
       argument === 'metadata' ||
+      argument === 'update' ||
       argument === 'version'
     ) {
       if (commandSeen) {
@@ -241,6 +258,16 @@ function parseArguments(args: string[]): CliOptions {
       }
 
       options.command = 'version';
+      commandSeen = true;
+      continue;
+    }
+
+    if (argument === '--update' || argument === '-U') {
+      if (commandSeen) {
+        throw new Error('Only one command can be specified.');
+      }
+
+      options.command = 'update';
       commandSeen = true;
       continue;
     }
@@ -381,8 +408,8 @@ async function offerLocalInstallation(): Promise<void> {
   console.log('\n✓ ngx-seo-kit was added to devDependencies.');
 }
 
-async function notifyPackageUpdate(): Promise<void> {
-  if (!shouldCheckForUpdates()) return;
+async function findPackageUpdate(): Promise<PackageUpdate | undefined> {
+  if (!shouldCheckForUpdates()) return undefined;
 
   try {
     const currentVersion = await readPackageVersion();
@@ -391,18 +418,43 @@ async function notifyPackageUpdate(): Promise<void> {
       signal: AbortSignal.timeout(1_500),
     });
 
-    if (!response.ok) return;
+    if (!response.ok) return undefined;
 
     const latest = (await response.json()) as { version?: unknown };
     if (typeof latest.version === 'string' && isNewerVersion(latest.version, currentVersion)) {
-      console.warn(
-        `\nUpdate available: ngx-seo-kit ${currentVersion} → ${latest.version}\n` +
-          'Run: npm install -D ngx-seo-kit@latest\n',
-      );
+      return { currentVersion, latestVersion: latest.version };
     }
   } catch {
     // A version check must never block sitemap generation.
   }
+
+  return undefined;
+}
+
+function printPackageUpdateNotice(packageUpdate: PackageUpdate | undefined): void {
+  if (!packageUpdate) return;
+
+  console.warn(
+    `\nUpdate available: ngx-seo-kit ${packageUpdate.currentVersion} → ${packageUpdate.latestVersion}\n` +
+      'Run: npm install -D ngx-seo-kit@latest\n',
+  );
+}
+
+async function updatePackage(
+  packageUpdate: PackageUpdate | undefined,
+  force = false,
+): Promise<void> {
+  if (!packageUpdate && !force) return;
+
+  const currentVersion = packageUpdate?.currentVersion ?? (await readPackageVersion());
+  const targetVersion = packageUpdate?.latestVersion ?? 'latest';
+
+  console.log(
+    `\nUpdating ngx-seo-kit ${currentVersion} → ${targetVersion}...\n`,
+  );
+  await installDevDependency('ngx-seo-kit@latest');
+  console.log(`\n✓ Updated ngx-seo-kit to ${targetVersion}. Starting it now...\n`);
+  await runLatestPackage();
 }
 
 function shouldCheckForUpdates(): boolean {
@@ -525,62 +577,88 @@ async function installDevDependency(specifier: string): Promise<void> {
   });
 }
 
-async function runMainMenu(): Promise<Exclude<MenuAction, 'help'>> {
-  printBrand();
+async function runLatestPackage(): Promise<void> {
+  const executable = process.platform === 'win32' ? process.env.ComSpec ?? 'cmd.exe' : 'npx';
+  const args = process.platform === 'win32'
+    ? ['/d', '/s', '/c', 'npx --yes ngx-seo-kit@latest']
+    : ['--yes', 'ngx-seo-kit@latest'];
 
-  while (true) {
-    const action = await select<MenuAction>({
-      message: 'What would you like to do?',
-      choices: [
-        {
-          name: 'Generate SEO files (sitemap.xml, robots.txt, etc.)',
-          value: 'generate',
-          description:
-            'Create search-engine files from your config. Direct command: npx ngx-seo-kit generate',
-        },
-        {
-          name: 'Set up Google Analytics',
-          value: 'analytics',
-          description:
-            'Install a Google tag in the Angular app. Direct command: npx ngx-seo-kit analytics',
-        },
-        {
-          name: 'Set up Open Graph & Schema',
-          value: 'metadata',
-          description:
-            'Install global social and structured metadata. Direct command: npx ngx-seo-kit metadata',
-        },
-        {
-          name: 'Run runtime route export test',
-          value: 'route-export-test',
-          description:
-            'Run the Router.config test once and collect its discovered paths.',
-        },
-        {
-          name: 'Save runtime routes to SEO config',
-          value: 'save-runtime-routes',
-          description: 'Run the route test once, then merge its paths into sitemap.routes.',
-        },
-        {
-          name: 'Help & command examples',
-          value: 'help',
-          description:
-            'Show every command, option and example. Direct command: npx ngx-seo-kit --help',
-        },
-        {
-          name: 'Exit',
-          value: 'exit',
-          description: 'Close ngx-seo-kit without making any changes.',
-        },
-      ],
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn(executable, args, {
+      cwd: process.cwd(),
+      stdio: 'inherit',
     });
 
-    if (action !== 'help') {
-      return action;
-    }
+    child.once('error', reject);
+    child.once('exit', (code, signal) => {
+      if (code === 0) {
+        resolvePromise();
+        return;
+      }
 
-    printHelp();
-  }
+      reject(
+        new Error(
+          signal
+            ? `npx was terminated by signal ${signal}.`
+            : `npx failed with exit code ${code ?? 'unknown'}.`,
+        ),
+      );
+    });
+  });
+}
+
+async function runMainMenu(
+  packageUpdate: PackageUpdate | undefined,
+): Promise<MenuAction> {
+  printBrand(packageUpdate);
+
+  return select<MenuAction>({
+    message: 'What would you like to do?',
+    choices: [
+      {
+        name: 'Generate SEO files (sitemap.xml, robots.txt, etc.)',
+        value: 'generate',
+        description:
+          'Create search-engine files from your config. Direct command: npx ngx-seo-kit generate',
+      },
+      {
+        name: 'Set up Google Analytics',
+        value: 'analytics',
+        description:
+          'Install a Google tag in the Angular app. Direct command: npx ngx-seo-kit analytics',
+      },
+      {
+        name: 'Set up Open Graph & Schema',
+        value: 'metadata',
+        description:
+          'Install global social and structured metadata. Direct command: npx ngx-seo-kit metadata',
+      },
+      {
+        name: 'Run runtime route export test',
+        value: 'route-export-test',
+        description: 'Run the Router.config test once and collect its discovered paths.',
+      },
+      {
+        name: 'Save runtime routes to SEO config',
+        value: 'save-runtime-routes',
+        description: 'Run the route test once, then merge its paths into sitemap.routes.',
+      },
+      ...(packageUpdate
+        ? [
+            {
+              name: `Update ngx-seo-kit (${packageUpdate.currentVersion} → ${packageUpdate.latestVersion})`,
+              value: 'update' as const,
+              description: 'Install the latest published ngx-seo-kit version.',
+            },
+          ]
+        : []),
+      {
+        name: 'Exit',
+        value: 'exit',
+        description: 'Close ngx-seo-kit without making any changes.',
+      },
+    ],
+  });
 }
 
 /** Runs the Angular test that reads the route configuration from Router.config. */
@@ -938,7 +1016,7 @@ function assertInteractiveAnalyticsTerminal(): void {
   }
 }
 
-function printBrand(): void {
+function printBrand(packageUpdate?: PackageUpdate): void {
   const useColor = process.stdout.isTTY && !('NO_COLOR' in process.env);
   const colors = useColor
     ? [
@@ -967,6 +1045,13 @@ function printBrand(): void {
     `\n${bold}${banner}${reset}\n` +
       `${accent}${bold}             Angular SEO tooling${reset}\n`,
   );
+
+  if (packageUpdate) {
+    console.warn(
+      `  Update available: ngx-seo-kit ${packageUpdate.currentVersion} → ${packageUpdate.latestVersion}\n` +
+        '  Run: npm install -D ngx-seo-kit@latest\n',
+    );
+  }
 }
 
 async function runSetupMenu(
@@ -1248,6 +1333,7 @@ Usage:
   npx ngx-seo-kit init [options]
   npx ngx-seo-kit analytics [options]
   npx ngx-seo-kit metadata [options]
+  npx ngx-seo-kit update
   npx ngx-seo-kit version
 
 Commands:
@@ -1256,6 +1342,7 @@ Commands:
   init                 Create a config through the guided setup.
   analytics            Install Google Analytics in an Angular index file.
   metadata             Install Open Graph and Schema.org metadata.
+  update               Install and start the latest ngx-seo-kit version.
   version              Print the installed ngx-seo-kit version.
 
 Options:
@@ -1270,6 +1357,7 @@ Options:
   --site-name <text>   Optional Open Graph site name
   --locale <locale>    Open Graph locale (default: en_US)
   -h, --help           Show this help
+  -U, --update         Install and start the latest ngx-seo-kit version
   -v, --version        Print the installed ngx-seo-kit version
 
 Examples:
