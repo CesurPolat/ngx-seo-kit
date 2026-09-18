@@ -48,6 +48,7 @@ type MenuAction =
   | 'analytics'
   | 'metadata'
   | 'route-export-test'
+  | 'save-runtime-routes'
   | 'help'
   | 'exit';
 
@@ -90,6 +91,11 @@ async function main(): Promise<void> {
     try {
       if (action === 'route-export-test') {
         await runRouteExportTest();
+        continue;
+      }
+      if (action === 'save-runtime-routes') {
+        const paths = await runRouteExportTest();
+        await saveRuntimeRoutesToConfig(paths, requestedConfigPath);
         continue;
       }
 
@@ -548,7 +554,12 @@ async function runMainMenu(): Promise<Exclude<MenuAction, 'help'>> {
           name: 'Run runtime route export test',
           value: 'route-export-test',
           description:
-            'Run the Router.config test once and print its discovered paths.',
+            'Run the Router.config test once and collect its discovered paths.',
+        },
+        {
+          name: 'Save runtime routes to SEO config',
+          value: 'save-runtime-routes',
+          description: 'Run the route test once, then merge its paths into sitemap.routes.',
         },
         {
           name: 'Help & command examples',
@@ -573,7 +584,7 @@ async function runMainMenu(): Promise<Exclude<MenuAction, 'help'>> {
 }
 
 /** Runs the Angular test that reads the route configuration from Router.config. */
-async function runRouteExportTest(): Promise<void> {
+async function runRouteExportTest(): Promise<string[]> {
   await ensureRouteExportTestFiles();
 
   const ngArgs = ['test', '--include=**/route-export.service.spec.ts', '--watch=false'];
@@ -584,13 +595,21 @@ async function runRouteExportTest(): Promise<void> {
     ? ['/d', '/s', '/c', `ng ${ngArgs.join(' ')}`]
     : ngArgs;
 
-  console.log(`\nRunning: ng ${ngArgs.join(' ')}\n`);
+  console.log('\nLoading routes...');
 
+  let stdout = '';
   await new Promise<void>((resolvePromise, reject) => {
     const child = spawn(executable, args, {
       cwd: process.cwd(),
-      stdio: 'inherit',
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString();
+    });
+    // Angular's test runner emits route data and build progress to its output.
+    // Keep it internal: the CLI only needs the tagged route payload below.
+    child.stderr?.on('data', () => undefined);
 
     child.once('error', (error) => {
       const notFound = (error as NodeJS.ErrnoException).code === 'ENOENT';
@@ -617,6 +636,38 @@ async function runRouteExportTest(): Promise<void> {
       );
     });
   });
+
+  const match = /\[ngx-seo-kit:routes\]\s+(\[[^\r\n]*\])/.exec(stdout);
+  if (!match?.[1]) {
+    throw new Error('Route export test passed but did not return a route list. Run the menu option once more to update the generated test.');
+  }
+  const paths: unknown = JSON.parse(match[1]);
+  if (!Array.isArray(paths) || !paths.every((path) => typeof path === 'string')) {
+    throw new Error('Route export test returned an invalid route list.');
+  }
+  return paths;
+}
+
+async function saveRuntimeRoutesToConfig(
+  paths: string[],
+  requestedConfigPath?: string,
+): Promise<void> {
+  const configPath = requestedConfigPath
+    ? await requireConfig(requestedConfigPath)
+    : await findConfig(process.cwd());
+  if (!configPath) throw new Error('No SEO config was found. Run "ngx-seo-kit init" first.');
+
+  const loaded = await loadConfig(configPath);
+  validateConfig(loaded, configPath);
+  const merged = {
+    ...loaded,
+    sitemap: {
+      ...loaded.sitemap,
+      routes: [...new Set([...loaded.sitemap.routes, ...paths])],
+    },
+  } satisfies NgxSeoConfig;
+  await writeFile(configPath, serializeConfig(merged, configPath), 'utf8');
+  console.log(`\n✓ Saved ${paths.length} runtime routes to ${configPath}`);
 }
 
 /** Creates the Angular service/spec once, using the app's exported route array. */
@@ -628,6 +679,7 @@ async function ensureRouteExportTestFiles(): Promise<void> {
 
   if (await fileExists(specFile)) {
     await migrateRouteExportService(serviceFile);
+    await migrateRouteExportSpec(specFile);
     return;
   }
 
@@ -733,6 +785,18 @@ async function migrateRouteExportService(serviceFile: string): Promise<void> {
   console.log(`Updated: ${serviceFile}`);
 }
 
+async function migrateRouteExportSpec(specFile: string): Promise<void> {
+  const source = await readFile(specFile, 'utf8');
+  const legacy = "console.info('[ngx-seo-kit] Runtime router paths:', paths);";
+  if (!source.includes(legacy)) return;
+  await writeFile(
+    specFile,
+    source.replace(legacy, "console.info('[ngx-seo-kit:routes]', JSON.stringify(paths));"),
+    'utf8',
+  );
+  console.log(`Updated: ${specFile}`);
+}
+
 function routeExportSpecSource(setup: RouteTestSetup): string {
   return `import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -748,7 +812,7 @@ describe('RouteExportService', () => {
     const service = TestBed.inject(RouteExportService);
     const paths = await service.sitemapPaths();
 
-    console.info('[ngx-seo-kit] Runtime router paths:', paths);
+    console.info('[ngx-seo-kit:routes]', JSON.stringify(paths));
     expect(paths.length).toBeGreaterThan(0);
   });
 });
