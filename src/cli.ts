@@ -10,6 +10,7 @@ import {
   validateConfig,
 } from './cli/config.js';
 import { runAnalyticsSetup, runMetadataSetup } from './cli/feature-setup.js';
+import { formatError } from './cli/errors.js';
 import { runMainMenu } from './cli/menu.js';
 import { parseArguments, printHelp, type CliOptions } from './cli/options.js';
 import {
@@ -20,7 +21,7 @@ import {
   updatePackage,
 } from './cli/package-manager.js';
 import { runSetupMenu, SetupCancelledError } from './cli/setup.js';
-import { assertInteractiveTerminal, isInteractiveTerminal } from './cli/terminal.js';
+import { assertInteractiveTerminal, isInteractiveTerminal, printCompletion } from './cli/terminal.js';
 import { writeSitemap } from './sitemap-generation/index.js';
 import { writeRobotsTxt } from './sitemap-generation/robots.js';
 
@@ -75,8 +76,7 @@ async function main(): Promise<void> {
         console.log('\nSetup cancelled.');
         continue;
       }
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(`âœ— ${message}`);
+      console.error(`[error] ${formatError(error)}`);
     }
   }
 }
@@ -127,7 +127,7 @@ async function runCommand(
   const routes = config.sitemap.routes;
   if (routes.length === 0) {
     if (configCreated) {
-      console.log('\nNo Angular routes were discovered. Config was created; add sitemap.routes before generating the sitemap.');
+      console.log('\nConfig was created without routes; add sitemap.routes before generating the sitemap.');
       return;
     }
     throw new Error('No routes were configured. Add explicit URLs to sitemap.routes.');
@@ -141,10 +141,8 @@ async function runCommand(
     ...(config.sitemap.stylesheet !== undefined ? { stylesheet: config.sitemap.stylesheet } : {}),
     output,
   });
-  console.log(`\nâœ“ Sitemap generated: ${result.output} (${result.urlCount} URLs)`);
-  if (result.stylesheetOutput) {
-    console.log(`âœ“ Sitemap stylesheet generated: ${result.stylesheetOutput}`);
-  }
+  const generatedFiles = [`Sitemap: ${result.output} (${result.urlCount} URLs)`];
+  if (result.stylesheetOutput) generatedFiles.push(`Stylesheet: ${result.stylesheetOutput}`);
 
   if (config.robots !== false) {
     const robots = config.robots ?? {};
@@ -156,8 +154,9 @@ async function runCommand(
         ? { sitemap: robots.sitemap }
         : { sitemap: `/${basename(output)}` }),
     });
-    console.log(`âœ“ Robots.txt generated: ${robotsResult.output}`);
+    generatedFiles.push(`Robots.txt: ${robotsResult.output}`);
   }
+  printCompletion('SEO files generated', generatedFiles);
 }
 
 function isSetupCancellation(error: unknown): boolean {
@@ -170,7 +169,6 @@ main().catch((error: unknown) => {
     console.log('\nSetup cancelled.');
     return;
   }
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`âœ— ${message}`);
+  console.error(`[error] ${formatError(error)}`);
   process.exitCode = 1;
 });

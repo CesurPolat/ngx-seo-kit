@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from '../site-url.js';
 import type { NgxSeoConfig } from '../types.js';
 import { serializeConfig, validateConfig } from './config.js';
+import { printCompletion } from './terminal.js';
 
 export async function runSetupMenu(
   configPath: string,
@@ -38,7 +39,7 @@ export async function runSetupMenu(
   console.log(`  Site URL: ${config.siteUrl}`);
   console.log(`  Output:   ${config.sitemap.output}`);
   console.log('  Robots:   Enabled');
-  console.log(`  Routes:   ${discoveredRoutes.length} discovered automatically`);
+  console.log(`  Routes:   ${discoveredRoutes.length} configured`);
   console.log('  Browser:  Styled HTML table');
   console.log(`  Excluded: ${exclude.length}`);
   if (discoveredRoutes.length === 0) {
@@ -59,7 +60,7 @@ export async function runSetupMenu(
     serializeConfig(config, configPath),
     { encoding: 'utf8', flag: 'wx' },
   );
-  console.log(`\nâœ“ Config created: ${configPath}`);
+  printCompletion('SEO configuration created', [configPath]);
   return config;
 }
 

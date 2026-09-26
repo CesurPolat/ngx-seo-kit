@@ -28,7 +28,7 @@ export async function offerLocalInstallation(): Promise<void> {
   const version = await readPackageVersion();
   console.log(`\nInstalling ngx-seo-kit@${version} as a dev dependency...\n`);
   await installDevDependency(`ngx-seo-kit@${version}`);
-  console.log('\nâœ“ ngx-seo-kit was added to devDependencies.');
+  console.log('\n[ok] ngx-seo-kit was added to devDependencies.');
 }
 
 export async function findPackageUpdate(): Promise<PackageUpdate | undefined> {
@@ -67,7 +67,7 @@ export async function updatePackage(
   const targetVersion = packageUpdate?.latestVersion ?? 'latest';
   console.log(`\nUpdating ngx-seo-kit ${currentVersion} â†’ ${targetVersion}...\n`);
   await installDevDependency('ngx-seo-kit@latest');
-  console.log(`\nâœ“ Updated ngx-seo-kit to ${targetVersion}. Starting it now...\n`);
+  console.log(`\n[ok] Updated ngx-seo-kit to ${targetVersion}. Starting it now...\n`);
   await runLatestPackage();
 }
 

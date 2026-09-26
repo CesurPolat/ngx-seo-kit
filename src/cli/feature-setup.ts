@@ -2,7 +2,7 @@ import input from '@inquirer/input';
 import { installGoogleTag, normalizeGoogleTagId } from '../analytics/google-tag.js';
 import { installSocialMetadata } from '../metadata/social-metadata.js';
 import type { CliOptions } from './options.js';
-import { isInteractiveTerminal } from './terminal.js';
+import { isInteractiveTerminal, printCompletion } from './terminal.js';
 
 export async function runAnalyticsSetup(options: CliOptions): Promise<void> {
   let tagId = options.tagId;
@@ -28,8 +28,7 @@ export async function runAnalyticsSetup(options: CliOptions): Promise<void> {
     ...(options.index ? { index: options.index } : {}),
   });
   const labels = { added: 'installed', updated: 'updated', unchanged: 'already configured' } as const;
-  console.log(`\nâœ“ Google Analytics ${labels[result.action]}: ${result.tagId}`);
-  console.log(`  Index: ${result.index}`);
+  printCompletion(`Google Analytics ${labels[result.action]}: ${result.tagId}`, [`Index: ${result.index}`]);
 }
 
 export async function runMetadataSetup(options: CliOptions): Promise<void> {
@@ -71,8 +70,7 @@ export async function runMetadataSetup(options: CliOptions): Promise<void> {
     ...(options.index ? { index: options.index } : {}),
   });
   const labels = { added: 'installed', updated: 'updated', unchanged: 'already configured' } as const;
-  console.log(`\nâœ“ Open Graph & Schema ${labels[result.action]}`);
-  console.log(`  Index: ${result.index}`);
+  printCompletion(`Open Graph & Schema ${labels[result.action]}`, [`Index: ${result.index}`]);
 }
 
 function validateRequiredText(value: string): true | string {
