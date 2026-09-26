@@ -1,5 +1,5 @@
 export interface CliOptions {
-  command?: 'generate' | 'init' | 'analytics' | 'metadata' | 'update' | 'version';
+  command?: 'generate' | 'init' | 'analytics' | 'metadata' | 'status' | 'update' | 'version';
   config?: string;
   output?: string;
   tagId?: string;
@@ -25,6 +25,7 @@ export function parseArguments(args: string[]): CliOptions {
       argument === 'init' ||
       argument === 'analytics' ||
       argument === 'metadata' ||
+      argument === 'status' ||
       argument === 'update' ||
       argument === 'version'
     ) {
@@ -95,6 +96,7 @@ Usage:
   npx ngx-seo-kit init [options]
   npx ngx-seo-kit analytics [options]
   npx ngx-seo-kit metadata [options]
+  npx ngx-seo-kit status
   npx ngx-seo-kit update
   npx ngx-seo-kit version
 
@@ -104,6 +106,7 @@ Commands:
   init                 Create a config through the guided setup.
   analytics            Install Google Analytics in an Angular index file.
   metadata             Install Open Graph and Schema.org metadata.
+  status               Show Angular version and SSR/prerender project status.
   update               Install and start the latest ngx-seo-kit version.
   version              Print the installed ngx-seo-kit version.
 
@@ -130,6 +133,7 @@ Examples:
   npx ngx-seo-kit analytics --tag-id G-XXXXXXXXXX
   npx ngx-seo-kit analytics --tag-id G-XXXXXXXXXX --index projects/app/src/index.html
   npx ngx-seo-kit metadata --title "Example" --description "Example site" --url https://example.com --image https://example.com/og-image.png
+  npx ngx-seo-kit status
   npx ngx-seo-kit generate --config config/seo.production.ts
   npx ngx-seo-kit generate --output public/sitemap.xml
 `);

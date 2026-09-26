@@ -24,6 +24,7 @@ import { runSetupMenu, SetupCancelledError } from './cli/setup.js';
 import { assertInteractiveTerminal, isInteractiveTerminal, printCompletion } from './cli/terminal.js';
 import { writeSitemap } from './sitemap-generation/index.js';
 import { writeRobotsTxt } from './sitemap-generation/robots.js';
+import { getProjectStatus } from './project-status/index.js';
 
 const DEFAULT_CONFIG_FILE = 'seo.config.ts';
 
@@ -92,6 +93,21 @@ async function runCommand(
   }
   if (command === 'metadata') {
     await runMetadataSetup(options);
+    return;
+  }
+  if (command === 'status') {
+    const status = await getProjectStatus();
+    printCompletion('Angular project status', [
+      `Angular: ${status.angularVersion ?? 'not detected'}`,
+      `Angular CLI: ${status.cliVersion ?? 'not detected'}`,
+      `Rendering: ${status.rendering}`,
+      `SSR: ${status.ssr ? 'enabled' : 'disabled'}`,
+      `Prerender: ${status.prerender ? 'enabled' : 'disabled'}`,
+      ...(status.ssrSignals.length > 0 ? [`SSR detected by: ${status.ssrSignals.join(', ')}`] : []),
+      ...(status.prerenderSignals.length > 0 ? [`Prerender detected by: ${status.prerenderSignals.join(', ')}`] : []),
+      `Projects: ${status.projects.length > 0 ? status.projects.join(', ') : 'not detected'}`,
+      `Targets: ${status.targets.length > 0 ? status.targets.join(', ') : 'not detected'}`,
+    ]);
     return;
   }
 

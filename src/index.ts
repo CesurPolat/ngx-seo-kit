@@ -1,4 +1,6 @@
 export { defineSeoConfig } from './config.js';
+export { getProjectStatus } from './project-status/index.js';
+export type { AngularProjectStatus, AngularRenderingMode } from './project-status/index.js';
 export {
   generateGoogleTagSnippet,
   installGoogleTag,

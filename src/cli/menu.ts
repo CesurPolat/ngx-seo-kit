@@ -6,6 +6,7 @@ export type MenuAction =
   | 'generate'
   | 'analytics'
   | 'metadata'
+  | 'status'
   | 'update'
   | 'exit';
 
@@ -28,6 +29,11 @@ export async function runMainMenu(packageUpdate: PackageUpdate | undefined): Pro
         name: 'Set up Open Graph & Schema',
         value: 'metadata',
         description: 'Install global social and structured metadata. Direct command: npx ngx-seo-kit metadata',
+      },
+      {
+        name: 'Check Angular project status',
+        value: 'status',
+        description: 'Show Angular version and SSR/prerender configuration.',
       },
       ...(packageUpdate ? [{
         name: `Update ngx-seo-kit (${packageUpdate.currentVersion} â†’ ${packageUpdate.latestVersion})`,
