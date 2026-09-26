@@ -1,13 +1,10 @@
 import confirm from '@inquirer/confirm';
 import input from '@inquirer/input';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import process from 'node:process';
-import { generateSitemap } from '../sitemap-generation/index.js';
-import { discoverAngularRoutes, discoverRoutes } from '../route-discovery/index.js';
+import { dirname } from 'node:path';
 import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from '../site-url.js';
 import type { NgxSeoConfig } from '../types.js';
-import { fileExists, serializeConfig, validateConfig } from './config.js';
+import { serializeConfig, validateConfig } from './config.js';
 
 export async function runSetupMenu(
   configPath: string,
@@ -25,11 +22,7 @@ export async function runSetupMenu(
     validate: (value) => value.trim().length > 0 || 'Output path cannot be empty.',
   });
   const exclude = parseList(await input({ message: 'Excluded routes (comma separated)' }));
-  const defaultRouteFile = 'src/app/app.routes.ts';
-  const hasDefaultRouteFile = await fileExists(resolve(defaultRouteFile));
-  const discoveredRoutes = hasDefaultRouteFile
-    ? await discoverRoutes(defaultRouteFile)
-    : await discoverAngularRoutes(process.cwd());
+  const discoveredRoutes: string[] = [];
   const config: NgxSeoConfig = {
     siteUrl: normalizeSiteUrl(withDefaultProtocol(siteUrl)),
     sitemap: {
@@ -41,10 +34,6 @@ export async function runSetupMenu(
   };
 
   validateConfig(config, configPath);
-  if (discoveredRoutes.length > 0) {
-    generateSitemap({ siteUrl: config.siteUrl, routes: discoveredRoutes });
-  }
-
   console.log('\nConfiguration summary');
   console.log(`  Site URL: ${config.siteUrl}`);
   console.log(`  Output:   ${config.sitemap.output}`);
@@ -67,7 +56,7 @@ export async function runSetupMenu(
   await mkdir(dirname(configPath), { recursive: true });
   await writeFile(
     configPath,
-    serializeConfig(config, configPath, hasDefaultRouteFile ? `./${defaultRouteFile}` : undefined),
+    serializeConfig(config, configPath),
     { encoding: 'utf8', flag: 'wx' },
   );
   console.log(`\nâœ“ Config created: ${configPath}`);

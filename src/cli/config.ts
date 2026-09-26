@@ -36,31 +36,17 @@ export async function requireConfig(path: string): Promise<string> {
   return path;
 }
 
-export function serializeConfig(config: NgxSeoConfig, path: string, routeFile?: string): string {
+export function serializeConfig(config: NgxSeoConfig, path: string): string {
   const extension = extname(path);
   const isTypeScript = extension === '.ts' || extension === '.mts';
-  const useResolver = routeFile !== undefined && extension !== '.cjs';
-  const marker = '__NGX_SEO_KIT_DISCOVER_ROUTES__';
-  const serializable = useResolver
-    ? { ...config, sitemap: { ...config.sitemap, routes: [marker] } }
-    : config;
-  let value = JSON.stringify(serializable, null, 2);
-  if (useResolver) {
-    value = value.replace(
-      JSON.stringify(marker),
-      `...await discoverRoutes(${JSON.stringify(routeFile)})`,
-    );
-  }
+  const value = JSON.stringify(config, null, 2);
   const annotation = `/** @type {import('ngx-seo-kit').NgxSeoConfig} */`;
 
   if (extension === '.cjs') return `${annotation}\nmodule.exports = ${value};\n`;
   if (isTypeScript) {
-    const imports = useResolver
-      ? "import { defineSeoConfig, discoverRoutes } from 'ngx-seo-kit';"
-      : "import { defineSeoConfig } from 'ngx-seo-kit';";
-    return `${imports}\n\nexport default defineSeoConfig(${value});\n`;
+    return `import { defineSeoConfig } from 'ngx-seo-kit';\n\nexport default defineSeoConfig(${value});\n`;
   }
-  return `${useResolver ? "import { discoverRoutes } from 'ngx-seo-kit';\n\n" : ''}${annotation}\nexport default ${value};\n`;
+  return `${annotation}\nexport default ${value};\n`;
 }
 
 export async function loadConfig(path: string): Promise<unknown> {

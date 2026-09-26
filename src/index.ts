@@ -18,10 +18,7 @@ export type {
   SocialMetadataOptions,
 } from './metadata/social-metadata.js';
 export {
-  discoverAngularRoutes,
   discoverRoutes,
-  routesToPaths,
-  routesToPathsAsync,
 } from './route-discovery/index.js';
 export { generateRobotsTxt, writeRobotsTxt } from './sitemap-generation/robots.js';
 export { generateSitemap, generateSitemapStylesheet, writeSitemap } from './sitemap-generation/index.js';
@@ -44,7 +41,3 @@ export type {
   WriteRobotsTxtOptions,
   WriteRobotsTxtResult,
 } from './sitemap-generation/types.js';
-export type {
-  AngularRouteDiscoveryOptions,
-  DiscoverableRoute,
-} from './route-discovery/types.js';

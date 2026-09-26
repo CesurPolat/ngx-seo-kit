@@ -19,7 +19,6 @@ import {
   readPackageVersion,
   updatePackage,
 } from './cli/package-manager.js';
-import { runRouteExportTest, saveRuntimeRoutesToConfig } from './cli/route-export.js';
 import { runSetupMenu, SetupCancelledError } from './cli/setup.js';
 import { assertInteractiveTerminal, isInteractiveTerminal } from './cli/terminal.js';
 import { writeSitemap } from './sitemap-generation/index.js';
@@ -69,15 +68,6 @@ async function main(): Promise<void> {
       if (action === 'update') {
         await updatePackage(packageUpdate);
         return;
-      }
-      if (action === 'route-export-test') {
-        await runRouteExportTest();
-        continue;
-      }
-      if (action === 'save-runtime-routes') {
-        const paths = await runRouteExportTest();
-        await saveRuntimeRoutesToConfig(paths, requestedConfigPath);
-        continue;
       }
       await runCommand(action, options, requestedConfigPath);
     } catch (error) {
@@ -140,7 +130,7 @@ async function runCommand(
       console.log('\nNo Angular routes were discovered. Config was created; add sitemap.routes before generating the sitemap.');
       return;
     }
-    throw new Error('No routes were configured. Add discoverRoutes(), routesToPaths(), or explicit URLs to sitemap.routes.');
+    throw new Error('No routes were configured. Add explicit URLs to sitemap.routes.');
   }
 
   const output = options.output ?? config.sitemap.output ?? 'public/sitemap.xml';

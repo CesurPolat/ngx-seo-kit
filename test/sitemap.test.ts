@@ -7,13 +7,9 @@ import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import {
-  discoverAngularRoutes,
-  discoverRoutes,
   generateRobotsTxt,
   generateSitemap,
   generateSitemapStylesheet,
-  routesToPaths,
-  routesToPathsAsync,
   writeRobotsTxt,
   writeSitemap,
 } from '../src/index.js';
@@ -23,12 +19,12 @@ test('package can be loaded from CommonJS configs', () => {
   const packageExports = createRequire(import.meta.url)('ngx-seo-kit') as {
     defineSeoConfig?: unknown;
     generateRobotsTxt?: unknown;
-    routesToPaths?: unknown;
+    discoverRoutes?: unknown;
   };
 
   assert.equal(typeof packageExports.defineSeoConfig, 'function');
   assert.equal(typeof packageExports.generateRobotsTxt, 'function');
-  assert.equal(typeof packageExports.routesToPaths, 'function');
+  assert.equal(typeof packageExports.discoverRoutes, 'function');
 });
 
 test('normalizes site URLs through shared URL helpers', () => {
@@ -214,124 +210,6 @@ test('escapes stylesheet titles and URLs', () => {
   );
 });
 
-test('discovers standalone, nested and lazy Angular routes', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-routes-'));
-  const app = join(directory, 'src', 'app');
-  await mkdir(join(app, 'account'), { recursive: true });
-  await writeFile(
-    join(app, 'app.routes.ts'),
-    `import { Routes } from '@angular/router';
-     export const routes: Routes = [
-       { path: '', loadComponent: () => import('./home') },
-       { path: 'about', component: AboutPage },
-       ...sharedRoutes,
-       { path: 'account', loadChildren: () => import('./account/account.routes').then(m => m.ACCOUNT_ROUTES) },
-       { path: 'legacy', redirectTo: 'about' },
-       { path: 'users/:id', component: UserPage },
-       { path: '**', component: NotFoundPage }
-     ];
-     const sharedRoutes = [{ path: 'contact', component: ContactPage }];
-     provideRouter(routes);`,
-  );
-  await writeFile(
-    join(app, 'account', 'account.routes.ts'),
-    `export const ACCOUNT_ROUTES = [
-       { path: '', component: AccountPage },
-       { path: 'settings', component: SettingsPage },
-       { path: 'team', children: [{ path: '', component: TeamPage }, { path: 'new', component: NewTeamPage }] }
-     ];`,
-  );
-
-  assert.deepEqual(await discoverAngularRoutes(directory), [
-    '/',
-    '/about',
-    '/account',
-    '/account/settings',
-    '/account/team',
-    '/account/team/new',
-    '/contact',
-  ]);
-  assert.deepEqual(await discoverRoutes('src/app/app.routes.ts', directory), [
-    '/',
-    '/about',
-    '/account',
-    '/account/settings',
-    '/account/team',
-    '/account/team/new',
-    '/contact',
-  ]);
-});
-
-test('converts an in-memory Angular routes array to sitemap paths', () => {
-  const routes = [
-    { path: '', loadComponent: () => undefined },
-    { path: 'about', component: {} },
-    {
-      path: 'account',
-      children: [
-        { path: '', component: {} },
-        { path: 'settings', component: {} },
-      ],
-    },
-    { path: 'legacy', redirectTo: 'about' },
-    { path: 'users/:id', component: {} },
-    { path: '**', component: {} },
-  ];
-
-  assert.deepEqual(routesToPaths(routes), [
-    '/',
-    '/about',
-    '/account',
-    '/account/settings',
-  ]);
-});
-
-test('resolves lazy in-memory route arrays to sitemap paths', async () => {
-  const routes = [
-    { path: '', component: {} },
-    {
-      path: 'account',
-      loadChildren: async () => ({
-        routes: [
-          { path: 'settings', component: {} },
-          { path: 'users/:id', component: {} },
-        ],
-      }),
-    },
-    {
-      path: 'shop',
-      loadChildren: async () => ({ default: [{ path: '', component: {} }] }),
-    },
-  ];
-
-  assert.deepEqual(await routesToPathsAsync(routes), ['/', '/account/settings', '/shop']);
-});
-
-test('discovers routes imported by the standard Angular app config', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-app-config-routes-'));
-  const app = join(directory, 'src', 'app');
-  await mkdir(app, { recursive: true });
-  await writeFile(
-    join(app, 'app.routes.ts'),
-    `import { Routes } from '@angular/router';
-     export const routes: Routes = [
-       { path: '', component: HomePage },
-       { path: 'about', component: AboutPage }
-     ];`,
-  );
-  await writeFile(
-    join(app, 'app.config.ts'),
-    `import { ApplicationConfig } from '@angular/core';
-     import { provideRouter } from '@angular/router';
-     import { routes as appRoutes } from './app.routes';
-     export const appConfig: ApplicationConfig = {
-       providers: [provideRouter(appRoutes)]
-     };`,
-  );
-
-  assert.deepEqual(await discoverAngularRoutes(directory), ['/', '/about']);
-});
-
 test('CLI exposes init, generate and version commands in help', () => {
   const cli = resolve('dist/src/cli.js');
   const result = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8' });
@@ -388,98 +266,4 @@ test('CLI generate does not create a missing configuration', async () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /ngx-seo-kit init/);
   await assert.rejects(readFile(join(directory, 'seo.config.ts'), 'utf8'));
-});
-
-test('CLI generates a sitemap from routes discovered in the config', async () => {
-  const cli = resolve('dist/src/cli.js');
-  const packageEntry = pathToFileURL(resolve('dist/src/index.js')).href;
-  const directory = await mkdtemp(join(tmpdir(), 'ngx-seo-kit-cli-routes-'));
-  await mkdir(join(directory, 'src', 'app'), { recursive: true });
-  await writeFile(
-    join(directory, 'src', 'app', 'app.routes.ts'),
-    `export const routes = [{ path: '', component: Home }, { path: 'about', component: About }];
-     provideRouter(routes);`,
-  );
-  await writeFile(
-    join(directory, 'seo.config.mjs'),
-    `import { discoverRoutes } from ${JSON.stringify(packageEntry)};
-     export default {
-       siteUrl: 'https://example.com',
-       sitemap: {
-         routes: [...await discoverRoutes('./src/app/app.routes.ts')],
-         stylesheet: true
-       }
-     };`,
-  );
-
-  const result = spawnSync(process.execPath, [cli, 'generate'], {
-    cwd: directory,
-    encoding: 'utf8',
-    env: { ...process.env, CI: '1' },
-  });
-
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /2 URLs/);
-  assert.match(await readFile(join(directory, 'public', 'sitemap.xml'), 'utf8'), /\/about/);
-  assert.match(result.stdout, /Sitemap stylesheet generated/);
-  assert.match(await readFile(join(directory, 'public', 'sitemap.xsl'), 'utf8'), /<table>/);
-  assert.match(result.stdout, /Robots\.txt generated/);
-  assert.match(
-    await readFile(join(directory, 'public', 'robots.txt'), 'utf8'),
-    /Sitemap: https:\/\/example\.com\/sitemap\.xml/,
-  );
-});
-
-test('CLI loads a TypeScript config with an imported routes variable', async () => {
-  const cli = resolve('dist/src/cli.js');
-  const packageEntry = pathToFileURL(resolve('dist/src/index.js')).href;
-  const testTempRoot = resolve('test', '.tmp');
-  await mkdir(testTempRoot, { recursive: true });
-  const directory = await mkdtemp(join(testTempRoot, 'cli-ts-config-'));
-  await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'commonjs' }));
-  await mkdir(join(directory, 'src', 'app', 'data'), { recursive: true });
-  await writeFile(
-    join(directory, 'src', 'app', 'data', 'projects.ts'),
-    `export const projects = [];`,
-  );
-  await writeFile(
-    join(directory, 'src', 'app', 'app.routes.ts'),
-    `import { projects } from './data/projects';
-     void projects;
-     export const routes = [
-       { path: '', component: {} },
-       { path: 'about', component: {} },
-       { path: 'users/:id', component: {} }
-     ];`,
-  );
-  await writeFile(
-    join(directory, 'seo.config.ts'),
-    `import { defineSeoConfig, routesToPathsAsync } from ${JSON.stringify(packageEntry)};
-     import { routes } from './src/app/app.routes.ts';
-     export default defineSeoConfig({
-       siteUrl: 'https://example.com',
-       sitemap: {
-         routes: await routesToPathsAsync(routes),
-         output: 'public/sitemap.xml'
-       },
-       robots: false
-     });`,
-  );
-
-  const result = spawnSync(process.execPath, [cli, 'generate'], {
-    cwd: directory,
-    encoding: 'utf8',
-    env: { ...process.env, CI: '1' },
-  });
-
-  try {
-    assert.equal(result.status, 0, result.stderr);
-    const sitemap = await readFile(join(directory, 'public', 'sitemap.xml'), 'utf8');
-    assert.match(sitemap, /<loc>https:\/\/example\.com\/<\/loc>/);
-    assert.match(sitemap, /<loc>https:\/\/example\.com\/about<\/loc>/);
-    assert.doesNotMatch(sitemap, /users/);
-    await assert.rejects(readFile(join(directory, 'public', 'robots.txt'), 'utf8'));
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
 });

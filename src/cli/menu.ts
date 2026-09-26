@@ -6,8 +6,6 @@ export type MenuAction =
   | 'generate'
   | 'analytics'
   | 'metadata'
-  | 'route-export-test'
-  | 'save-runtime-routes'
   | 'update'
   | 'exit';
 
@@ -30,16 +28,6 @@ export async function runMainMenu(packageUpdate: PackageUpdate | undefined): Pro
         name: 'Set up Open Graph & Schema',
         value: 'metadata',
         description: 'Install global social and structured metadata. Direct command: npx ngx-seo-kit metadata',
-      },
-      {
-        name: 'Run runtime route export test',
-        value: 'route-export-test',
-        description: 'Run the Router.config test once and collect its discovered paths.',
-      },
-      {
-        name: 'Save runtime routes to SEO config',
-        value: 'save-runtime-routes',
-        description: 'Run the route test once, then merge its paths into sitemap.routes.',
       },
       ...(packageUpdate ? [{
         name: `Update ngx-seo-kit (${packageUpdate.currentVersion} â†’ ${packageUpdate.latestVersion})`,

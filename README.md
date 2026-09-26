@@ -57,11 +57,9 @@ copy.
 
 Choose **Generate SEO files**. If no configuration exists, the guided setup
 opens automatically and asks for your site URL, sitemap output path, and
-excluded routes. It discovers Angular
-routes from `src/app/app.routes.ts`, previews the configuration, creates `seo.config.ts`, and
-generates the first sitemap and robots file. If no Angular routes are found, setup still creates
-the configuration with an empty `sitemap.routes` array so you can add public
-paths manually; sitemap generation is skipped until routes are available.
+excluded routes. Angular routes are not loaded during site generation. The setup creates `seo.config.ts`
+with an empty `sitemap.routes` array so you can add public paths manually.
+Route discovery is available as a programmatic API through `discoverRoutes()`.
 
 You can skip the main menu and open the setup directly with
 `npx ngx-seo-kit init`. Interactive menus are disabled in CI and build
@@ -72,14 +70,12 @@ environments, where the configuration file must already exist.
 You can also create `seo.config.ts` manually in the project root:
 
 ```ts
-import { defineSeoConfig, discoverRoutes } from 'ngx-seo-kit';
+import { defineSeoConfig } from 'ngx-seo-kit';
 
 export default defineSeoConfig({
   siteUrl: 'https://example.com',
   sitemap: {
-    routes: [
-      ...await discoverRoutes('./src/app/app.routes.ts'),
-    ],
+    routes: ['/', '/about'],
     output: 'public/sitemap.xml',
     stylesheet: true,
     exclude: ['/404', '/admin'],
@@ -119,46 +115,8 @@ stylesheet: {
 }
 ```
 
-`discoverRoutes(...)` follows `provideRouter(...)` and `RouterModule.forRoot(...)`, including
-nested `children` and relative `loadChildren` imports. Redirects, wildcards, and
-parameterized paths such as `/users/:id` are skipped because they are not
-concrete sitemap URLs. Its result is spread into `sitemap.routes`, where it can
-be combined with explicit URLs and route metadata.
-
-To scan a non-standard route file or add a manual URL:
-
-```js
-sitemap: {
-  routes: [
-    ...await discoverRoutes('./projects/storefront/src/app/app.routes.ts'),
-    '/blog/generated-slug',
-  ],
-}
-```
-
-Alternatively, import an Angular `Routes` variable and convert its eager route
-tree directly:
-
-```ts
-import { defineSeoConfig, routesToPaths } from 'ngx-seo-kit';
-import { routes } from './src/app/app.routes';
-
-export default defineSeoConfig({
-  siteUrl: 'https://example.com',
-  sitemap: {
-    routes: routesToPaths(routes),
-  },
-});
-```
-
-`routesToPaths(...)` walks in-memory `children` arrays but does not execute
-`loadChildren` functions. Use file-based `discoverRoutes(...)` when lazy route
-discovery is required or importing the application route tree has runtime side
-effects.
-
-For an Angular `ng test` that reads the route configuration registered at
-runtime (including supported lazy route arrays), see
-[Reading Angular runtime routes](docs/angular-runtime-route-test.md).
+Route discovery is a separate programmatic feature. `discoverRoutes()` runs
+Angular `ng test` and returns the registered runtime route paths.
 
 ## Angular build integration
 
@@ -337,21 +295,12 @@ const xml = generateSitemap({
 });
 ```
 
-Discover routes directly:
+Discover runtime routes programmatically:
 
 ```ts
 import { discoverRoutes } from 'ngx-seo-kit';
 
-const routes = await discoverRoutes('./src/app/app.routes.ts');
-```
-
-Convert an imported Angular route variable:
-
-```ts
-import { routesToPaths } from 'ngx-seo-kit';
-import { routes } from './src/app/app.routes';
-
-const paths = routesToPaths(routes);
+const routes = await discoverRoutes();
 ```
 
 Write the sitemap to a file:
