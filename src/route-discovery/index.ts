@@ -3,6 +3,8 @@ import { dirname, isAbsolute, join, normalize, resolve, sep } from 'node:path';
 import ts from 'typescript';
 import type { AngularRouteDiscoveryOptions, DiscoverableRoute } from './types.js';
 
+export type { AngularRouteDiscoveryOptions, DiscoverableRoute } from './types.js';
+
 interface ParsedRouteFile {
   path: string;
   sourceFile: ts.SourceFile;

@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { generateSitemap } from '../sitemap-generation/index.js';
-import { discoverAngularRoutes, discoverRoutes } from '../sitemap-generation/route-discovery.js';
+import { discoverAngularRoutes, discoverRoutes } from '../route-discovery/index.js';
 import { normalizeSiteUrl, SiteUrlError, withDefaultProtocol } from '../site-url.js';
 import type { NgxSeoConfig } from '../types.js';
 import { fileExists, serializeConfig, validateConfig } from './config.js';
