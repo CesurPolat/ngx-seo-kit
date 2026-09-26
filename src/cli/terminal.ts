@@ -1,4 +1,7 @@
 import process from 'node:process';
+import readline from 'node:readline';
+
+let keypressEventsInitialized = false;
 
 export function isInteractiveTerminal(): boolean {
   return Boolean(process.stdin.isTTY && process.stdout.isTTY && !process.env.CI);
@@ -23,4 +26,31 @@ export function printCompletion(title: string, details: readonly string[] = []):
   for (const detail of details) {
     console.log(`  ${detail}`);
   }
+}
+
+export async function waitForKeypress(): Promise<void> {
+  if (!isInteractiveTerminal()) return;
+
+  console.log('\nPress any key to return to menu...');
+  await new Promise<void>((resolve) => {
+    const stdin = process.stdin;
+    if (!keypressEventsInitialized) {
+      readline.emitKeypressEvents(stdin);
+      keypressEventsInitialized = true;
+    }
+    const cleanup = () => {
+      stdin.removeListener('keypress', onKeypress);
+      if (stdin.setRawMode) stdin.setRawMode(true);
+      stdin.resume();
+      resolve();
+    };
+    const onKeypress = () => cleanup();
+    if (stdin.setRawMode) stdin.setRawMode(true);
+    stdin.resume();
+    stdin.once('keypress', onKeypress);
+  });
+}
+
+export function clearTerminal(): void {
+  if (process.stdout.isTTY) process.stdout.write('\u001b[2J\u001b[H');
 }

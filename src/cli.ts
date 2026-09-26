@@ -21,7 +21,13 @@ import {
   updatePackage,
 } from './cli/package-manager.js';
 import { runSetupMenu, SetupCancelledError } from './cli/setup.js';
-import { assertInteractiveTerminal, isInteractiveTerminal, printCompletion } from './cli/terminal.js';
+import {
+  assertInteractiveTerminal,
+  clearTerminal,
+  isInteractiveTerminal,
+  printCompletion,
+  waitForKeypress,
+} from './cli/terminal.js';
 import { writeSitemap } from './sitemap-generation/index.js';
 import { writeRobotsTxt } from './sitemap-generation/robots.js';
 import { getProjectStatus } from './project-status/index.js';
@@ -72,12 +78,18 @@ async function main(): Promise<void> {
         return;
       }
       await runCommand(action, options, requestedConfigPath);
+      await waitForKeypress();
+      clearTerminal();
+      await new Promise<void>((resolve) => setImmediate(resolve));
     } catch (error) {
       if (isSetupCancellation(error)) {
         console.log('\nSetup cancelled.');
         continue;
       }
       console.error(`[error] ${formatError(error)}`);
+      await waitForKeypress();
+      clearTerminal();
+      await new Promise<void>((resolve) => setImmediate(resolve));
     }
   }
 }
