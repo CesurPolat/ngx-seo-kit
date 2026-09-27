@@ -121,6 +121,19 @@ const status = await getProjectStatus();
 The status reader checks `package.json` and `angular.json`, including Angular
 `targets`/`architect`, SSR and prerender builders, `outputMode`, and scripts.
 
+## Roadmap
+
+Planned features and target delivery dates are tracked in
+[`ROADMAP.md`](ROADMAP.md).
+
+- **15 October 2026** — Config diagnostics and actionable CLI errors
+- **30 October 2026** — CI-friendly `check` command
+- **15 November 2026** — Typed page-level metadata
+- **30 November 2026** — Canonical and Twitter/X metadata
+- **15 December 2026** — Expanded structured data support
+- **31 January 2027** — Sitemap indexes and large-site support
+- **31 March 2027** — SEO audit report command
+
 ## Sitemap routes
 
 Routes can include sitemap metadata:

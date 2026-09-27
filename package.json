@@ -35,6 +35,7 @@
     "docs",
     "seo.config.example.ts",
     "README.md",
+    "ROADMAP.md",
     "LICENSE"
   ],
   "scripts": {
