@@ -88,6 +88,9 @@ export default defineSeoConfig({
 The project must contain a route-export test that prints the marker
 `[ngx-seo-kit:routes]` with a JSON array.
 
+When `discoverRoutes()` runs, it creates these files automatically if neither
+file exists. Existing files are never overwritten.
+
 ### In-memory Angular routes
 
 Use `routesToPaths()` when the route tree is already imported:

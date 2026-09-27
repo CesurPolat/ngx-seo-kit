@@ -40,7 +40,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/write-cjs-package.mjs",
-    "test": "npm run build && node --test dist/test/sitemap.test.js dist/test/analytics.test.js dist/test/metadata.test.js",
+    "test": "npm run build && node --test dist/test/sitemap.test.js dist/test/analytics.test.js dist/test/metadata.test.js dist/test/route-export.test.js",
     "prepack": "npm test"
   },
   "devDependencies": {

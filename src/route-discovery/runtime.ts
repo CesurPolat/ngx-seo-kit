@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import process from 'node:process';
+import { ensureRouteExportFiles } from '../cli/route-export.js';
 
 /** Runs Angular's route-export test and returns the runtime route paths. */
 export async function discoverRoutes(): Promise<string[]> {
@@ -13,6 +14,10 @@ export async function discoverRoutes(): Promise<string[]> {
   const stopLoading = startLoading('Discovering Angular routes');
 
   try {
+    const created = await ensureRouteExportFiles();
+    if (created) {
+      console.log(`Created route export files: ${created.service}, ${created.test}`);
+    }
     await new Promise<void>((resolve, reject) => {
       const child = spawn(executable, args, {
         cwd: process.cwd(),

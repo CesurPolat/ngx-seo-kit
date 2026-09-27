@@ -191,6 +191,14 @@ updates it without duplicates. Unmanaged Open Graph tags are not overwritten.
 This is global fallback metadata; use Angular or SSR integration for
 route-specific values.
 
+The generated test imports `routes` from `src/app/app.routes.ts`, configures
+Angular's router, and prints the `[ngx-seo-kit:routes]` marker consumed by the
+route discovery API. When `discoverRoutes()` is called and either file is
+missing, the missing file is created automatically; existing files are never
+overwritten.
+When `discoverRoutes()` is called and both files are missing, it creates the
+same files automatically before running Angular tests.
+
 ## Options
 
 | Option | Short form | Description |

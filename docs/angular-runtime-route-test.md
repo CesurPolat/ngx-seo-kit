@@ -39,6 +39,7 @@ describe('RouteExportService', () => {
     const service = TestBed.inject(RouteExportService);
     const paths = await service.sitemapPaths();
 
+    console.log('[ngx-seo-kit:routes]', JSON.stringify(paths));
     expect(paths).toContain('/');
     expect(paths).toContain('/admin/users');
   });
@@ -51,12 +52,10 @@ Run it with:
 ng test --include='**/route-export.service.spec.ts' --watch=false
 ```
 
-The interactive `npx ngx-seo-kit` menu also contains **Run runtime route
-export test**. On its first run it creates `src/app/route-export.service.ts`
-and `src/app/route-export.service.spec.ts` from the route array exported by
-`src/app/app.routes.ts` (or, when that array is private, the `ApplicationConfig`
-exported by `src/app/app.config.ts`), then runs the same command from the
-Angular project root. It never overwrites either generated file.
+`discoverRoutes()` creates `src/app/route-export.service.ts` and
+`src/app/route-export.service.spec.ts` automatically when either file is
+missing, then runs the test from the Angular project root. It never overwrites
+existing generated files.
 
 `routesToPaths` follows eager `children` arrays, excludes redirects, wildcard
 routes, and parameterised paths, and returns normalized URL paths. Lazy
