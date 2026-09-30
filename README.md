@@ -290,6 +290,15 @@ import {
 
 ## Development
 
+Build the documentation site as static HTML for GitHub Pages:
+
+```bash
+npm run docs:build
+```
+
+The generated site is written to `docs/index.html` and can be served from the
+repository’s `docs` folder.
+
 ```bash
 npm install
 npm test

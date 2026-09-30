@@ -45,9 +45,9 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/write-cjs-package.mjs",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs",
+    "docs:dev": "vitepress dev docs-src",
+    "docs:build": "vitepress build docs-src",
+    "docs:preview": "vitepress preview docs-src",
     "test": "npm run build && node --test dist/test/sitemap.test.js dist/test/analytics.test.js dist/test/metadata.test.js dist/test/metadata-runtime.test.js dist/test/seo-build.test.js dist/test/route-export.test.js",
     "prepack": "npm test"
   },

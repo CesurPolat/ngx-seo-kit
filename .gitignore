@@ -2,3 +2,6 @@ node_modules/
 dist/
 *.tgz
 
+# VitePress temporary files; keep the config and generated docs output tracked.
+docs-src/.vitepress/.temp/
+docs-src/.vitepress/cache/
