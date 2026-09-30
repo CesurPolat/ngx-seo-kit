@@ -14,6 +14,27 @@ export {
   generateSocialMetadataSnippet,
   installSocialMetadata,
 } from './metadata/social-metadata.js';
+export {
+  createBreadcrumbListJsonLd,
+  createOrganizationJsonLd,
+  createWebSiteJsonLd,
+  generateJsonLdScripts,
+  normalizeJsonLd,
+} from './metadata/json-ld.js';
+export { normalizeRobots, resolveSeoMetadata } from './metadata/resolve.js';
+export type {
+  BreadcrumbItemJsonLd,
+  BreadcrumbListJsonLd,
+  OrganizationJsonLd,
+  ResolvedSeoMetadata,
+  RobotsDirective,
+  RobotsValue,
+  SeoMetadata,
+  SeoRouteData,
+  TwitterCard,
+  TypedJsonLd,
+  WebSiteJsonLd,
+} from './metadata/types.js';
 export type {
   InstallSocialMetadataOptions,
   InstallSocialMetadataResult,

@@ -9,6 +9,7 @@
     "declaration": false
   },
   "include": [
-    "src/index.ts"
+    "src/index.ts",
+    "src/angular-shims.d.ts"
   ]
 }

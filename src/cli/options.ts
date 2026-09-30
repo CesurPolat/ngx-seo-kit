@@ -7,9 +7,13 @@ export interface CliOptions {
   title?: string;
   description?: string;
   url?: string;
+  canonical?: string;
   image?: string;
   siteName?: string;
   locale?: string;
+  twitterCard?: string;
+  robots?: string;
+  jsonLd?: string;
   help: boolean;
 }
 
@@ -64,9 +68,13 @@ export function parseArguments(args: string[]): CliOptions {
       '--title': 'title',
       '--description': 'description',
       '--url': 'url',
+      '--canonical': 'canonical',
       '--image': 'image',
       '--site-name': 'siteName',
       '--locale': 'locale',
+      '--twitter-card': 'twitterCard',
+      '--robots': 'robots',
+      '--json-ld': 'jsonLd',
     };
     const optionName = argument ? optionNames[argument] : undefined;
     if (argument && optionName) {
@@ -118,9 +126,13 @@ Options:
   --title <text>       Open Graph title used by metadata
   --description <text> Open Graph description used by metadata
   --url <url>          Canonical absolute URL used by metadata
+  --canonical <url>    Page canonical URL used by metadata
   --image <url>        Absolute social image URL used by metadata
   --site-name <text>   Optional Open Graph site name
   --locale <locale>    Open Graph locale (default: en_US)
+  --twitter-card <id>  Twitter/X card type
+  --robots <directives> Robots directives, for example noindex,nofollow
+  --json-ld <json>     Additional JSON-LD object or array
   -h, --help           Show this help
   -U, --update         Install and start the latest ngx-seo-kit version
   -v, --version        Print the installed ngx-seo-kit version

@@ -1,6 +1,7 @@
 import input from '@inquirer/input';
 import { installGoogleTag, normalizeGoogleTagId } from '../analytics/google-tag.js';
 import { installSocialMetadata } from '../metadata/social-metadata.js';
+import type { TypedJsonLd } from '../metadata/types.js';
 import type { CliOptions } from './options.js';
 import { isInteractiveTerminal, printCompletion } from './terminal.js';
 
@@ -67,10 +68,24 @@ export async function runMetadataSetup(options: CliOptions): Promise<void> {
     image,
     siteName,
     locale,
+    ...(options.canonical ? { canonical: options.canonical } : {}),
+    ...(options.twitterCard ? { twitterCard: options.twitterCard as 'summary' | 'summary_large_image' | 'app' | 'player' } : {}),
+    ...(options.robots ? { robots: options.robots } : {}),
+    ...(options.jsonLd ? { jsonLd: parseJsonLd(options.jsonLd) } : {}),
     ...(options.index ? { index: options.index } : {}),
   });
   const labels = { added: 'installed', updated: 'updated', unchanged: 'already configured' } as const;
   printCompletion(`Open Graph & Schema ${labels[result.action]}`, [`Index: ${result.index}`]);
+}
+
+function parseJsonLd(value: string): TypedJsonLd | readonly TypedJsonLd[] {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== 'object') throw new Error('must be an object or array');
+    return parsed as TypedJsonLd | readonly TypedJsonLd[];
+  } catch (error) {
+    throw new Error(`--json-ld must contain valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 function validateRequiredText(value: string): true | string {

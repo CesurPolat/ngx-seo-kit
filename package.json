@@ -27,6 +27,11 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js",
       "require": "./dist/cjs/index.js"
+    },
+    "./angular": {
+      "types": "./dist/src/angular.d.ts",
+      "import": "./dist/src/angular.js",
+      "require": "./dist/cjs/angular.js"
     }
   },
   "files": [
@@ -40,7 +45,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/write-cjs-package.mjs",
-    "test": "npm run build && node --test dist/test/sitemap.test.js dist/test/analytics.test.js dist/test/metadata.test.js dist/test/route-export.test.js",
+    "test": "npm run build && node --test dist/test/sitemap.test.js dist/test/analytics.test.js dist/test/metadata.test.js dist/test/metadata-runtime.test.js dist/test/route-export.test.js",
     "prepack": "npm test"
   },
   "devDependencies": {
@@ -61,5 +66,17 @@
     "@inquirer/select": "^4.4.2",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=16",
+    "@angular/core": ">=16",
+    "@angular/router": ">=16",
+    "@angular/platform-browser": ">=16"
+  },
+  "peerDependenciesMeta": {
+    "@angular/common": { "optional": true },
+    "@angular/core": { "optional": true },
+    "@angular/router": { "optional": true },
+    "@angular/platform-browser": { "optional": true }
   }
 }

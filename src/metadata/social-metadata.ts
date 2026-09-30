@@ -1,6 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { escapeHtmlAttribute, escapeRegExp, safeJson } from '../utils.js';
+import { normalizeRobots } from './resolve.js';
+import type { SeoMetadata, TypedJsonLd, TwitterCard } from './types.js';
 
 const METADATA_START = '<!-- ngx-seo-kit:social-metadata:start -->';
 const METADATA_END = '<!-- ngx-seo-kit:social-metadata:end -->';
@@ -12,6 +14,12 @@ export interface SocialMetadataOptions {
   image: string;
   siteName?: string;
   locale?: string;
+  canonical?: string;
+  robots?: string | readonly string[];
+  ogType?: string;
+  twitterCard?: TwitterCard;
+  organization?: Omit<Extract<TypedJsonLd, { '@type': 'Organization' }>, '@type'>;
+  jsonLd?: TypedJsonLd | readonly TypedJsonLd[];
 }
 
 export interface InstallSocialMetadataOptions extends SocialMetadataOptions {
@@ -35,11 +43,16 @@ export function generateSocialMetadataSnippet(
     url: metadata.url,
     description: metadata.description,
     image: metadata.image,
+    ...(metadata.jsonLd ? { jsonLd: metadata.jsonLd } : {}),
   };
 
   return [
     METADATA_START,
-    '<meta property="og:type" content="website">',
+    '<title>' + escapeHtmlAttribute(metadata.title) + '</title>',
+    `<meta name="description" content="${escapeHtmlAttribute(metadata.description)}">`,
+    `<link rel="canonical" href="${escapeHtmlAttribute(metadata.canonical ?? metadata.url)}">`,
+    ...(metadata.robots ? [`<meta name="robots" content="${escapeHtmlAttribute(normalizeRobots(metadata.robots))}">`] : []),
+    `<meta property="og:type" content="${escapeHtmlAttribute(metadata.ogType ?? 'website')}">`,
     `<meta property="og:title" content="${escapeHtmlAttribute(metadata.title)}">`,
     `<meta property="og:description" content="${escapeHtmlAttribute(metadata.description)}">`,
     `<meta property="og:url" content="${escapeHtmlAttribute(metadata.url)}">`,
@@ -50,8 +63,12 @@ export function generateSocialMetadataSnippet(
     ...(metadata.locale
       ? [`<meta property="og:locale" content="${escapeHtmlAttribute(metadata.locale)}">`]
       : []),
+    `<meta name="twitter:card" content="${escapeHtmlAttribute(metadata.twitterCard ?? 'summary_large_image')}">`,
+    `<meta name="twitter:title" content="${escapeHtmlAttribute(metadata.title)}">`,
+    `<meta name="twitter:description" content="${escapeHtmlAttribute(metadata.description)}">`,
+    `<meta name="twitter:image" content="${escapeHtmlAttribute(metadata.image)}">`,
     '<script type="application/ld+json">',
-    safeJson(schema),
+    safeJson(metadata.jsonLd ?? schema),
     '</script>',
     METADATA_END,
   ].join(newline);
@@ -119,6 +136,9 @@ function normalizeSocialMetadata(options: SocialMetadataOptions): SocialMetadata
   const locale = options.locale === undefined
     ? undefined
     : normalizeLocale(options.locale);
+  const canonical = options.canonical === undefined
+    ? undefined
+    : normalizeHttpUrl(options.canonical, 'canonical');
 
   return {
     title,
@@ -127,6 +147,11 @@ function normalizeSocialMetadata(options: SocialMetadataOptions): SocialMetadata
     image,
     ...(siteName ? { siteName } : {}),
     ...(locale ? { locale } : {}),
+    ...(canonical ? { canonical } : {}),
+    ...(options.robots ? { robots: normalizeRobots(options.robots) } : {}),
+    ...(options.ogType ? { ogType: normalizeText(options.ogType, 'ogType') } : {}),
+    ...(options.twitterCard ? { twitterCard: options.twitterCard } : {}),
+    ...(options.jsonLd ? { jsonLd: options.jsonLd } : {}),
   };
 }
 

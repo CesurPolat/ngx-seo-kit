@@ -5,6 +5,7 @@ import { register } from 'tsx/esm/api';
 import { basename, dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { NgxSeoConfig } from '../types.js';
+import { normalizeRobots } from '../metadata/resolve.js';
 
 const DEFAULT_CONFIG_FILES = [
   'seo.config.ts',
@@ -123,6 +124,19 @@ export function validateConfig(value: unknown, path: string): asserts value is N
     throw new Error('Config must contain a sitemap object.');
   }
   if (!Array.isArray(config.sitemap.routes)) throw new Error('sitemap.routes must be an array.');
+
+  const metadata = config.metadata;
+  if (metadata !== undefined) {
+    if (!metadata || typeof metadata !== 'object') throw new Error('metadata must be an object.');
+    if (typeof metadata.title !== 'string' || !metadata.title.trim()) throw new Error('metadata.title must be a non-empty string.');
+    for (const key of ['description', 'image', 'canonical', 'siteName', 'locale', 'ogType'] as const) {
+      const value = metadata[key];
+      if (value !== undefined && (typeof value !== 'string' || !value.trim())) {
+        throw new Error(`metadata.${key} must be a non-empty string.`);
+      }
+    }
+    if (metadata.robots !== undefined) normalizeRobots(metadata.robots);
+  }
 
   const stylesheet = config.sitemap.stylesheet;
   if (

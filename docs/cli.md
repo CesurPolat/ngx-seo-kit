@@ -191,6 +191,14 @@ updates it without duplicates. Unmanaged Open Graph tags are not overwritten.
 This is global fallback metadata; use Angular or SSR integration for
 route-specific values.
 
+The global fallback can also be declared in `seo.config.ts` with a `metadata`
+property. Route-specific values belong in Angular route `data.seo`; child
+routes override parent values and unspecified fields use the global fallback.
+The runtime API is available from `ngx-seo-kit/angular`; pass the existing
+`seo.config.ts` to `provideNgxSeo()` from `app.config.ts` and the package owns
+the Angular service/router subscription. It is SSR/prerender safe. Additional CLI options include `--canonical`, `--twitter-card`,
+`--robots`, and `--json-ld`.
+
 The generated test imports `routes` from `src/app/app.routes.ts`, configures
 Angular's router, and prints the `[ngx-seo-kit:routes]` marker consumed by the
 route discovery API. When `discoverRoutes()` is called and either file is

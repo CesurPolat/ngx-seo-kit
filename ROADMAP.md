@@ -13,6 +13,13 @@ scope may be adjusted as implementation and compatibility testing progress.
 - Angular route discovery from runtime route-export tests and in-memory route
   trees.
 - Open Graph and basic Schema.org metadata installation with duplicate-safety.
+- Typed global and route-level metadata with title, description, canonical,
+  robots, social image and fallback resolution.
+- Canonical, Twitter/X and expanded Open Graph metadata with safe escaping and
+  duplicate-aware installation.
+- Angular runtime metadata provider with `data.seo` route integration and
+  SSR/prerender-safe updates.
+- Typed JSON-LD helpers for WebSite, Organization and BreadcrumbList.
 - Google tag installation with duplicate detection.
 - Angular, SSR and prerender project status detection.
 - Interactive setup, config validation and build-time CLI generation.
@@ -23,9 +30,9 @@ scope may be adjusted as implementation and compatibility testing progress.
 | --- | --- | --- | --- | --- |
 | 15 October 2026 | P0 | Config validation and diagnostics | Add actionable warnings for missing `siteUrl`, empty routes, invalid output paths, duplicate routes and production-incompatible URLs. Improve CLI error context and exit codes. | Planned |
 | 30 October 2026 | P0 | `check` command for CI | Add a non-writing validation command with machine-readable output, strict mode and checks for sitemap/robots configuration. | Planned |
-| 15 November 2026 | P0 | Page metadata model | Introduce typed page-level metadata for title, description, canonical URL, robots directives and social image values, while preserving the current global metadata API. | Planned |
-| 30 November 2026 | P1 | Canonical and Twitter metadata | Generate canonical links, Twitter/X card tags and complete Open Graph fields with safe escaping and duplicate-aware installation. | Planned |
-| 15 December 2026 | P1 | Structured data expansion | Support typed JSON-LD blocks for common Angular sites, including WebSite, Organization, BreadcrumbList, Article and Product, with schema validation errors that point to the source config. | Planned |
+| 15 November 2026 | P0 | Page metadata model | Introduce typed page-level metadata for title, description, canonical URL, robots directives and social image values, while preserving the current global metadata API. | Completed |
+| 30 November 2026 | P1 | Canonical and Twitter metadata | Generate canonical links, Twitter/X card tags and complete Open Graph fields with safe escaping and duplicate-aware installation. | Completed |
+| 15 December 2026 | P1 | Structured data expansion | Support typed JSON-LD blocks for common Angular sites, including WebSite, Organization, BreadcrumbList, Article and Product, with schema validation errors that point to the source config. | In progress — WebSite, Organization and BreadcrumbList completed; Article/Product pending |
 | 15 January 2027 | P1 | Multilingual SEO | Add `hreflang` alternate links, locale validation and language-aware route metadata for sites with multiple URL variants. | Planned |
 | 31 January 2027 | P0 | Sitemap index and large-site support | Split large sitemaps, generate sitemap indexes and preserve deterministic ordering. Add safeguards for sitemap protocol limits and duplicate locations. | Planned |
 | 15 February 2027 | P1 | Specialized sitemap extensions | Add opt-in image sitemap fields first, followed by news and video extension support where the route model can provide valid data. | Planned |

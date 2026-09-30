@@ -193,6 +193,58 @@ npx ngx-seo-kit metadata \
   --image https://example.com/og-image.png
 ```
 
+Global metadata can also be kept in `seo.config.ts` as a fallback for every
+route:
+
+```ts
+export default defineSeoConfig({
+  siteUrl: 'https://example.com',
+  metadata: {
+    title: 'Example',
+    description: 'Example Angular application',
+    image: 'https://example.com/og-image.png',
+  },
+  sitemap: { routes: ['/'] },
+});
+```
+
+For page-level metadata, put partial SEO data in Angular route `data.seo`.
+Child routes override parent routes, and missing fields fall back to the global
+metadata:
+
+```ts
+{
+  path: 'products',
+  data: {
+    seo: {
+      title: 'Products',
+      description: 'Browse our products',
+      robots: ['index', 'follow'],
+      twitterCard: 'summary_large_image',
+    },
+  },
+}
+```
+
+The Angular entrypoint exports `provideNgxSeo`. Pass the same config used by
+the CLI (or its `siteUrl` and `metadata` fields) once from `app.config.ts`:
+
+```ts
+import seoConfig from '../../seo.config';
+import { provideNgxSeo } from 'ngx-seo-kit/angular';
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideNgxSeo(seoConfig)],
+};
+```
+
+The provider owns the Angular service and router subscription. Canonical URLs
+are derived from `siteUrl` and the active router URL when a route does not
+define one. Angular remains an optional peer dependency of the core package.
+
+Typed JSON-LD helpers are available for `WebSite`, `Organization` and
+`BreadcrumbList`; custom JSON-LD blocks can be passed through `jsonLd`.
+
 ## Programmatic API
 
 ```ts
