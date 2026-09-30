@@ -45,11 +45,15 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/write-cjs-package.mjs",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "test": "npm run build && node --test dist/test/sitemap.test.js dist/test/analytics.test.js dist/test/metadata.test.js dist/test/metadata-runtime.test.js dist/test/seo-build.test.js dist/test/route-export.test.js",
     "prepack": "npm test"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3"
+    "@types/node": "^24.13.3",
+    "vitepress": "^1.6.4"
   },
   "keywords": [
     "angular",
@@ -70,13 +74,21 @@
   "peerDependencies": {
     "@angular/common": ">=16",
     "@angular/core": ">=16",
-    "@angular/router": ">=16",
-    "@angular/platform-browser": ">=16"
+    "@angular/platform-browser": ">=16",
+    "@angular/router": ">=16"
   },
   "peerDependenciesMeta": {
-    "@angular/common": { "optional": true },
-    "@angular/core": { "optional": true },
-    "@angular/router": { "optional": true },
-    "@angular/platform-browser": { "optional": true }
+    "@angular/common": {
+      "optional": true
+    },
+    "@angular/core": {
+      "optional": true
+    },
+    "@angular/router": {
+      "optional": true
+    },
+    "@angular/platform-browser": {
+      "optional": true
+    }
   }
 }
