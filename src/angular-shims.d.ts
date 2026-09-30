@@ -26,3 +26,11 @@ declare module '@angular/router' {
     events: { subscribe(listener: unknown): { unsubscribe(): void } };
   }
 }
+
+declare module 'tsx/cjs/api' {
+  export function register(): () => void;
+}
+
+declare module 'tsx/esm/api' {
+  export function register(): () => Promise<void>;
+}

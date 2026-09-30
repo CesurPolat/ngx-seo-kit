@@ -1,5 +1,5 @@
 export interface CliOptions {
-  command?: 'generate' | 'init' | 'analytics' | 'metadata' | 'status' | 'update' | 'version';
+  command?: 'generate' | 'build' | 'init' | 'analytics' | 'metadata' | 'status' | 'update' | 'version';
   config?: string;
   output?: string;
   tagId?: string;
@@ -14,6 +14,9 @@ export interface CliOptions {
   twitterCard?: string;
   robots?: string;
   jsonLd?: string;
+  angular?: boolean;
+  json?: boolean;
+  strict?: boolean;
   help: boolean;
 }
 
@@ -26,6 +29,7 @@ export function parseArguments(args: string[]): CliOptions {
 
     if (
       argument === 'generate' ||
+      argument === 'build' ||
       argument === 'init' ||
       argument === 'analytics' ||
       argument === 'metadata' ||
@@ -55,6 +59,19 @@ export function parseArguments(args: string[]): CliOptions {
 
     if (argument === '--help' || argument === '-h') {
       options.help = true;
+      continue;
+    }
+
+    if (argument === '--angular') {
+      options.angular = true;
+      continue;
+    }
+    if (argument === '--json') {
+      options.json = true;
+      continue;
+    }
+    if (argument === '--strict') {
+      options.strict = true;
       continue;
     }
 
@@ -101,6 +118,7 @@ export function printHelp(): void {
 Usage:
   npx ngx-seo-kit [options]
   npx ngx-seo-kit generate [options]
+  npx ngx-seo-kit build [options]
   npx ngx-seo-kit init [options]
   npx ngx-seo-kit analytics [options]
   npx ngx-seo-kit metadata [options]
@@ -111,6 +129,7 @@ Usage:
 Commands:
   (none)               Open the interactive main menu.
   generate             Generate SEO files (sitemap.xml, robots.txt, etc.).
+  build                Generate and validate SEO files; use --angular for ng build.
   init                 Create a config through the guided setup.
   analytics            Install Google Analytics in an Angular index file.
   metadata             Install Open Graph and Schema.org metadata.
@@ -133,6 +152,9 @@ Options:
   --twitter-card <id>  Twitter/X card type
   --robots <directives> Robots directives, for example noindex,nofollow
   --json-ld <json>     Additional JSON-LD object or array
+  --angular             Run Angular's ng build after SEO validation
+  --json                Print a machine-readable build report
+  --strict              Treat build warnings as errors
   -h, --help           Show this help
   -U, --update         Install and start the latest ngx-seo-kit version
   -v, --version        Print the installed ngx-seo-kit version

@@ -57,6 +57,7 @@ Available commands:
 
 ```text
 generate    Generate sitemap.xml and robots.txt
+build       Generate and validate SEO files; optionally run ng build
 init        Create an SEO config interactively
 analytics   Install Google Analytics in an Angular index.html
 metadata    Install Open Graph and Schema.org metadata
@@ -66,6 +67,34 @@ update      Install the latest version
 ```
 
 Use `npx ngx-seo-kit --help` for all options.
+
+## SEO build pipeline
+
+Run the SEO generation and validation pipeline:
+
+```bash
+npx ngx-seo-kit build
+```
+
+This validates `seo.config.ts`, checks route duplicates, generates and reads
+back `sitemap.xml` and `robots.txt`, and fails when the generated files are
+invalid. Use strict mode to treat warnings such as missing global metadata as
+errors:
+
+```bash
+npx ngx-seo-kit build --strict
+npx ngx-seo-kit build --json
+```
+
+To run Angular’s production build after the SEO pipeline succeeds:
+
+```bash
+npx ngx-seo-kit build --angular
+```
+
+The command does not modify route files or `index.html`; metadata installation
+remains the responsibility of the `metadata` command and runtime route SEO
+remains the responsibility of `provideNgxSeo`.
 
 ## Route discovery
 

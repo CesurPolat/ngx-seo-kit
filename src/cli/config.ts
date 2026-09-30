@@ -120,6 +120,11 @@ export function validateConfig(value: unknown, path: string): asserts value is N
   if (typeof config.siteUrl !== 'string' || !config.siteUrl.trim()) {
     throw new Error('Config must contain a non-empty siteUrl.');
   }
+  let siteUrl: URL;
+  try { siteUrl = new URL(config.siteUrl); } catch { throw new Error('siteUrl must be an absolute URL.'); }
+  if (siteUrl.protocol !== 'http:' && siteUrl.protocol !== 'https:') {
+    throw new Error('siteUrl must use http or https.');
+  }
   if (!config.sitemap || typeof config.sitemap !== 'object') {
     throw new Error('Config must contain a sitemap object.');
   }
@@ -133,6 +138,16 @@ export function validateConfig(value: unknown, path: string): asserts value is N
       const value = metadata[key];
       if (value !== undefined && (typeof value !== 'string' || !value.trim())) {
         throw new Error(`metadata.${key} must be a non-empty string.`);
+      }
+    }
+    for (const key of ['image', 'canonical'] as const) {
+      const value = metadata[key];
+      if (value !== undefined) {
+        let url: URL;
+        try { url = new URL(value); } catch { throw new Error(`metadata.${key} must be an absolute URL.`); }
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          throw new Error(`metadata.${key} must use http or https.`);
+        }
       }
     }
     if (metadata.robots !== undefined) normalizeRobots(metadata.robots);

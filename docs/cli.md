@@ -199,6 +199,21 @@ The runtime API is available from `ngx-seo-kit/angular`; pass the existing
 the Angular service/router subscription. It is SSR/prerender safe. Additional CLI options include `--canonical`, `--twitter-card`,
 `--robots`, and `--json-ld`.
 
+### `build`
+
+Run the complete SEO generation and validation pipeline:
+
+```bash
+npx ngx-seo-kit build
+```
+
+The command loads and validates `seo.config.ts`, checks configured sitemap
+routes, writes and validates `sitemap.xml` and `robots.txt`, and returns a
+non-zero exit code on errors. `--strict` turns warnings into errors and
+`--json` prints a machine-readable report. Add `--angular` to run `ng build`
+after the SEO pipeline succeeds. The command does not modify route files or
+`index.html`.
+
 The generated test imports `routes` from `src/app/app.routes.ts`, configures
 Angular's router, and prints the `[ngx-seo-kit:routes]` marker consumed by the
 route discovery API. When `discoverRoutes()` is called and either file is

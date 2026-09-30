@@ -31,6 +31,7 @@ import {
 import { writeSitemap } from './sitemap-generation/index.js';
 import { writeRobotsTxt } from './sitemap-generation/robots.js';
 import { getProjectStatus } from './project-status/index.js';
+import { runSeoBuild } from './seo-build.js';
 
 const DEFAULT_CONFIG_FILE = 'seo.config.ts';
 
@@ -99,6 +100,26 @@ async function runCommand(
   options: CliOptions,
   requestedConfigPath?: string,
 ): Promise<void> {
+  if (command === 'build') {
+    const report = await runSeoBuild({
+      ...(requestedConfigPath ? { config: requestedConfigPath } : {}),
+      ...(options.output ? { output: options.output } : {}),
+      ...(options.angular ? { angular: true } : {}),
+      ...(options.strict ? { strict: true } : {}),
+    });
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      printCompletion(report.passed ? 'SEO build completed' : 'SEO build failed', [
+        `Routes: ${report.routeCount}`,
+        ...(report.generatedFiles.length > 0 ? [`Generated: ${report.generatedFiles.join(', ')}`] : []),
+        ...report.warnings.map((warning) => `Warning: ${warning}`),
+        ...report.errors.map((error) => `Error: ${error}`),
+      ]);
+    }
+    if (!report.passed) process.exitCode = 1;
+    return;
+  }
   if (command === 'analytics') {
     await runAnalyticsSetup(options);
     return;
