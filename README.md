@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/CesurPolat/ngx-seo-kit/tree/main/docs">Documentation</a> ·
+  <a href="https://ngx-seo-kit.cesurpolat.dev/">Documentation</a> ·
   <a href="https://github.com/CesurPolat/ngx-seo-kit/issues">Issues</a> ·
   <a href="LICENSE">MIT License</a>
 </p>
@@ -159,11 +159,14 @@ application output:
 
 ## 📚 Documentation
 
-- [Getting started](docs/guide/getting-started.html)
-- [Configuration](docs/guide/configuration.html)
-- [Metadata and Angular runtime](docs/guide/metadata.html)
-- [API reference](docs/guide/api.html)
-- [CLI guide](docs/cli.html)
+Read the full documentation at
+[ngx-seo-kit.cesurpolat.dev](https://ngx-seo-kit.cesurpolat.dev/).
+
+- [Getting started](https://ngx-seo-kit.cesurpolat.dev/guide/getting-started)
+- [Configuration](https://ngx-seo-kit.cesurpolat.dev/guide/configuration)
+- [Metadata and Angular runtime](https://ngx-seo-kit.cesurpolat.dev/guide/metadata)
+- [API reference](https://ngx-seo-kit.cesurpolat.dev/guide/api)
+- [CLI guide](https://ngx-seo-kit.cesurpolat.dev/cli)
 - [Roadmap](ROADMAP.md)
 
 Build the static documentation site locally:
