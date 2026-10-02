@@ -8,8 +8,11 @@ export default defineConfig({
   outDir: '../docs',
   cleanUrls: true,
   lastUpdated: true,
+  head: [
+    ['link', { rel: 'icon', href: '/logo.png' }],
+  ],
   themeConfig: {
-    logo: '/logo.svg',
+    logo: '/logo.png',
     siteTitle: 'ngx-seo-kit',
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
