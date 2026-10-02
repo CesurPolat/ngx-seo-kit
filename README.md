@@ -73,6 +73,15 @@ Run the CLI without a command to open the interactive menu:
 
 ```bash
 npx ngx-seo-kit
+
+To use the same workflow in a browser tab:
+
+```bash
+npx ngx-seo-kit --gui
+```
+
+The terminal remains the command runner; the browser collects and validates
+answers, then the existing CLI operation continues and prints its normal output.
 ```
 
 Available commands:

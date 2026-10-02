@@ -44,6 +44,17 @@ Open the interactive main menu:
 
 ```bash
 npx ngx-seo-kit
+
+Choose **Continue in browser** from the menu, or open the browser workflow
+directly with:
+
+```bash
+npx ngx-seo-kit --gui
+```
+
+The browser workflow uses a localhost session and keeps the main menu and the
+selected setup form in one tab. Answers are validated locally and the normal
+CLI output is printed in the terminal after submission.
 ```
 
 Use the arrow keys to choose one of these actions:

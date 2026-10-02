@@ -3,6 +3,7 @@ import process from 'node:process';
 import type { PackageUpdate } from './package-manager.js';
 
 export type MenuAction =
+  | 'gui'
   | 'generate'
   | 'analytics'
   | 'metadata'
@@ -15,6 +16,11 @@ export async function runMainMenu(packageUpdate: PackageUpdate | undefined): Pro
   return select<MenuAction>({
     message: 'What would you like to do?',
     choices: [
+      {
+        name: 'Continue in browser',
+        value: 'gui',
+        description: 'Open the same ngx-seo-kit workflow in a browser tab.',
+      },
       {
         name: 'Generate SEO files (sitemap.xml, robots.txt, etc.)',
         value: 'generate',

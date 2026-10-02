@@ -1,5 +1,7 @@
+export type Command = 'generate' | 'build' | 'init' | 'analytics' | 'metadata' | 'status' | 'update' | 'version';
+
 export interface CliOptions {
-  command?: 'generate' | 'build' | 'init' | 'analytics' | 'metadata' | 'status' | 'update' | 'version';
+  command?: Command;
   config?: string;
   output?: string;
   tagId?: string;
@@ -17,6 +19,8 @@ export interface CliOptions {
   angular?: boolean;
   json?: boolean;
   strict?: boolean;
+  gui?: boolean;
+  guiAnswers?: Record<string, unknown>;
   help: boolean;
 }
 
@@ -72,6 +76,10 @@ export function parseArguments(args: string[]): CliOptions {
     }
     if (argument === '--strict') {
       options.strict = true;
+      continue;
+    }
+    if (argument === '--gui') {
+      options.gui = true;
       continue;
     }
 
@@ -155,6 +163,7 @@ Options:
   --angular             Run Angular's ng build after SEO validation
   --json                Print a machine-readable build report
   --strict              Treat build warnings as errors
+  --gui                 Open the interactive flow in a browser
   -h, --help           Show this help
   -U, --update         Install and start the latest ngx-seo-kit version
   -v, --version        Print the installed ngx-seo-kit version

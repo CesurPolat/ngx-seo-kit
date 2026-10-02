@@ -10,7 +10,9 @@ import {
   validateConfig,
 } from './cli/config.js';
 import { runAnalyticsSetup, runMetadataSetup } from './cli/feature-setup.js';
+import { runAnalyticsSetupFromAnswers, runMetadataSetupFromAnswers } from './cli/feature-setup.js';
 import { formatError } from './cli/errors.js';
+import { runGuiFlow } from './cli/gui.js';
 import { runMainMenu } from './cli/menu.js';
 import { parseArguments, printHelp, type CliOptions } from './cli/options.js';
 import {
@@ -20,7 +22,7 @@ import {
   readPackageVersion,
   updatePackage,
 } from './cli/package-manager.js';
-import { runSetupMenu, SetupCancelledError } from './cli/setup.js';
+import { runSetupFromAnswers, runSetupMenu, SetupCancelledError } from './cli/setup.js';
 import {
   assertInteractiveTerminal,
   clearTerminal,
@@ -60,12 +62,41 @@ async function main(): Promise<void> {
     await runCommand(options.command, options, requestedConfigPath);
     return;
   }
+  if (options.gui) {
+    try {
+      await runGuiFlow(options, packageUpdate, async (command, answers) => {
+        if (command === 'update') {
+          await updatePackage(packageUpdate);
+          return;
+        }
+        if (command === 'version') {
+          console.log(await readPackageVersion());
+          return;
+        }
+        await runCommand(command, { ...options, guiAnswers: answers }, requestedConfigPath);
+      }, requestedConfigPath);
+    } catch (error) {
+      if (!isInteractiveTerminal()) throw error;
+      console.error(`[error] ${formatError(error)}`);
+      console.log('Returning to the terminal menu...');
+      await runInteractiveMenu(packageUpdate, options, requestedConfigPath);
+    }
+    return;
+  }
   if (!isInteractiveTerminal()) {
     printPackageUpdateNotice(packageUpdate);
     await runCommand('generate', options, requestedConfigPath);
     return;
   }
 
+  await runInteractiveMenu(packageUpdate, options, requestedConfigPath);
+}
+
+async function runInteractiveMenu(
+  packageUpdate: Awaited<ReturnType<typeof findPackageUpdate>>,
+  options: CliOptions,
+  requestedConfigPath?: string,
+): Promise<void> {
   while (true) {
     const action = await runMainMenu(packageUpdate);
     if (action === 'exit') {
@@ -74,6 +105,20 @@ async function main(): Promise<void> {
     }
 
     try {
+      if (action === 'gui') {
+        await runGuiFlow(options, packageUpdate, async (command, answers) => {
+          if (command === 'update') {
+            await updatePackage(packageUpdate);
+            return;
+          }
+          if (command === 'version') {
+            console.log(await readPackageVersion());
+            return;
+          }
+          await runCommand(command, { ...options, guiAnswers: answers }, requestedConfigPath);
+        }, requestedConfigPath);
+        continue;
+      }
       if (action === 'update') {
         await updatePackage(packageUpdate);
         return;
@@ -121,10 +166,18 @@ async function runCommand(
     return;
   }
   if (command === 'analytics') {
+    if (options.guiAnswers) {
+      await runAnalyticsSetupFromAnswers(options, options.guiAnswers);
+      return;
+    }
     await runAnalyticsSetup(options);
     return;
   }
   if (command === 'metadata') {
+    if (options.guiAnswers) {
+      await runMetadataSetupFromAnswers(options, options.guiAnswers);
+      return;
+    }
     await runMetadataSetup(options);
     return;
   }
@@ -154,7 +207,9 @@ async function runCommand(
       throw new Error(`Config already exists at "${configPath}". Remove it before running init again.`);
     }
     assertInteractiveTerminal();
-    config = await runSetupMenu(configPath, options.output);
+    config = options.guiAnswers
+      ? await runSetupFromAnswers(configPath, options.output, options.guiAnswers)
+      : await runSetupMenu(configPath, options.output);
     configCreated = true;
   } else {
     const existingConfigPath = requestedConfigPath
@@ -167,7 +222,9 @@ async function runCommand(
       assertInteractiveTerminal();
       configPath = requestedConfigPath ?? resolve(DEFAULT_CONFIG_FILE);
       console.log("No SEO config found. Let's create one.\n");
-      config = await runSetupMenu(configPath, options.output);
+      config = options.guiAnswers
+        ? await runSetupFromAnswers(configPath, options.output, options.guiAnswers)
+        : await runSetupMenu(configPath, options.output);
       configCreated = true;
     }
   }

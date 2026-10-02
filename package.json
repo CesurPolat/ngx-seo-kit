@@ -65,6 +65,7 @@
     "ngx"
   ],
   "dependencies": {
+    "@cesur_polat/webquirer": "^0.1.0",
     "@inquirer/confirm": "^5.1.21",
     "@inquirer/input": "^4.3.1",
     "@inquirer/select": "^4.4.2",

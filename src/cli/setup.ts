@@ -64,11 +64,31 @@ export async function runSetupMenu(
   return config;
 }
 
+export async function runSetupFromAnswers(
+  configPath: string,
+  requestedOutput: string | undefined,
+  answers: Record<string, unknown>,
+): Promise<NgxSeoConfig> {
+  const siteUrl = readAnswer(answers, 'siteUrl');
+  const output = readAnswer(answers, 'output') || requestedOutput || 'public/sitemap.xml';
+  const exclude = parseList(readAnswer(answers, 'exclude', false));
+  const config: NgxSeoConfig = {
+    siteUrl: normalizeSiteUrl(withDefaultProtocol(siteUrl)),
+    sitemap: { output, stylesheet: true, routes: [], ...(exclude.length > 0 ? { exclude } : {}) },
+  };
+  validateConfig(config, configPath);
+  if (answers.create === false) throw new SetupCancelledError();
+  await mkdir(dirname(configPath), { recursive: true });
+  await writeFile(configPath, serializeConfig(config, configPath), { encoding: 'utf8', flag: 'wx' });
+  printCompletion('SEO configuration created', [configPath]);
+  return config;
+}
+
 function parseList(value: string): string[] {
   return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
 }
 
-function validateSiteUrl(value: string): true | string {
+export function validateSiteUrl(value: string): true | string {
   try {
     normalizeSiteUrl(withDefaultProtocol(value));
     return true;
@@ -79,6 +99,13 @@ function validateSiteUrl(value: string): true | string {
     }
     return 'Enter a valid absolute URL, for example https://example.com.';
   }
+}
+
+function readAnswer(answers: Record<string, unknown>, name: string, required = true): string {
+  const value = answers[name];
+  if (typeof value === 'string' && (!required || value.trim())) return value.trim();
+  if (!required) return '';
+  throw new Error(`Missing GUI answer: ${name}`);
 }
 
 export class SetupCancelledError extends Error {}

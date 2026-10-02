@@ -92,7 +92,7 @@ function validateRequiredText(value: string): true | string {
   return value.trim().length > 0 || 'This value cannot be empty.';
 }
 
-function validateAbsoluteHttpUrl(value: string): true | string {
+export function validateAbsoluteHttpUrl(value: string): true | string {
   try {
     const url = new URL(value.trim());
     return url.protocol === 'http:' || url.protocol === 'https:'
@@ -101,4 +101,43 @@ function validateAbsoluteHttpUrl(value: string): true | string {
   } catch {
     return 'Enter a valid absolute URL.';
   }
+}
+
+export async function runAnalyticsSetupFromAnswers(options: CliOptions, answers: Record<string, unknown>): Promise<void> {
+  const tagId = readAnswer(answers, 'tagId');
+  const index = readAnswer(answers, 'index', false);
+  const result = await installGoogleTag({ tagId, ...(index ? { index } : options.index ? { index: options.index } : {}) });
+  const labels = { added: 'installed', updated: 'updated', unchanged: 'already configured' } as const;
+  printCompletion(`Google Analytics ${labels[result.action]}: ${result.tagId}`, [`Index: ${result.index}`]);
+}
+
+export async function runMetadataSetupFromAnswers(options: CliOptions, answers: Record<string, unknown>): Promise<void> {
+  const url = readAnswer(answers, 'url');
+  const title = readAnswer(answers, 'title');
+  const description = readAnswer(answers, 'description');
+  const image = readAnswer(answers, 'image', false) || new URL('/og-image.png', url).toString();
+  const siteName = readAnswer(answers, 'siteName', false) || title;
+  const locale = readAnswer(answers, 'locale', false) || 'en_US';
+  const canonical = readAnswer(answers, 'canonical', false);
+  const twitterCard = readAnswer(answers, 'twitterCard', false);
+  const robots = readAnswer(answers, 'robots', false);
+  const jsonLd = readAnswer(answers, 'jsonLd', false);
+  const index = readAnswer(answers, 'index', false);
+  const result = await installSocialMetadata({
+    title, description, url, image, siteName, locale,
+    ...(canonical ? { canonical } : {}),
+    ...(twitterCard ? { twitterCard: twitterCard as 'summary' | 'summary_large_image' | 'app' | 'player' } : {}),
+    ...(robots ? { robots } : {}),
+    ...(jsonLd ? { jsonLd: parseJsonLd(jsonLd) } : {}),
+    ...(index ? { index } : options.index ? { index: options.index } : {}),
+  });
+  const labels = { added: 'installed', updated: 'updated', unchanged: 'already configured' } as const;
+  printCompletion(`Open Graph & Schema ${labels[result.action]}`, [`Index: ${result.index}`]);
+}
+
+function readAnswer(answers: Record<string, unknown>, name: string, required = true): string {
+  const value = answers[name];
+  if (typeof value === 'string' && (!required || value.trim())) return value.trim();
+  if (!required) return '';
+  throw new Error(`Missing GUI answer: ${name}`);
 }
