@@ -4,15 +4,15 @@ export default defineConfig({
   title: 'ngx-seo-kit',
   description: 'Build-time SEO tools for Angular applications.',
   lang: 'en-US',
-  base: '/ngx-seo-kit/',
+  base: '/',
   outDir: '../docs',
   cleanUrls: true,
   lastUpdated: true,
   head: [
-    ['link', { rel: 'icon', href: '/logo.png' }],
+    ['link', { rel: 'icon', href: '/logo-transparent.png' }],
   ],
   themeConfig: {
-    logo: '/logo.png',
+    logo: '/logo-transparent.png',
     siteTitle: 'ngx-seo-kit',
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },

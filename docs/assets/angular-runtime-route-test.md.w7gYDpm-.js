@@ -1,4 +1,4 @@
-import { _ as _export_sfc, o as openBlock, c as createElementBlock, a2 as createStaticVNode } from "./chunks/framework.Ch8CHC29.js";
+import { _ as _export_sfc, o as openBlock, c as createElementBlock, a2 as createStaticVNode } from "./chunks/framework.B1k-ukVh.js";
 const __pageData = JSON.parse('{"title":"Reading Angular runtime routes in ng test","description":"","frontmatter":{},"headers":[],"relativePath":"angular-runtime-route-test.md","filePath":"angular-runtime-route-test.md","lastUpdated":1790770918000}');
 const _sfc_main = { name: "angular-runtime-route-test.md" };
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {

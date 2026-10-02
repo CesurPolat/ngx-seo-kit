@@ -6,7 +6,7 @@ hero:
   text: Angular SEO without the plumbing
   tagline: Generate sitemaps, robots.txt and route-aware metadata from one typed configuration.
   image:
-    src: /logo.png
+    src: /logo-transparent.png
     alt: ngx-seo-kit logo
   actions:
     - theme: brand

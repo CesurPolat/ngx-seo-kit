@@ -10058,7 +10058,7 @@ function pathToFile(path) {
   pagePath = pagePath.replace(/\/$/, "/index");
   {
     if (inBrowser) {
-      const base = "/ngx-seo-kit/";
+      const base = "/";
       pagePath = sanitizeFileName(pagePath.slice(base.length).replace(/\//g, "_") || "index") + ".md";
       let pageHash = __VP_HASH_MAP__[pagePath.toLowerCase()];
       if (!pageHash) {
@@ -10318,7 +10318,7 @@ const Content = /* @__PURE__ */ defineComponent({
 });
 const scriptRel = "modulepreload";
 const assetsURL = function(dep) {
-  return "/ngx-seo-kit/" + dep;
+  return "/" + dep;
 };
 const seen = {};
 const __vitePreload = function preload(baseModule, deps, importerUrl) {

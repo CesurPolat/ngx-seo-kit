@@ -1,4 +1,4 @@
-import { _ as _export_sfc, o as openBlock, c as createElementBlock, a2 as createStaticVNode } from "./chunks/framework.Ch8CHC29.js";
+import { _ as _export_sfc, o as openBlock, c as createElementBlock, a2 as createStaticVNode } from "./chunks/framework.B1k-ukVh.js";
 const __pageData = JSON.parse('{"title":"Metadata and Angular runtime","description":"","frontmatter":{},"headers":[],"relativePath":"guide/metadata.md","filePath":"guide/metadata.md","lastUpdated":1790770918000}');
 const _sfc_main = { name: "guide/metadata.md" };
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
